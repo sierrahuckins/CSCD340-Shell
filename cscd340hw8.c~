@@ -1,0 +1,104 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "./utils/myUtils.h"
+#include "./utils/msshrcUtils.h"
+#include "./history/history.h"
+#include "./linkedlist/listUtils.h"
+#include "./linkedlist/linkedList.h"
+#include "./linkedlist/genericData.h"
+#include "./linkedlist/requiredIncludes.h"
+#include "./alias/alias.h"
+
+#define MAX 100
+#define TRUE 1
+#define FALSE 0
+
+int main()
+{
+	int argc, histcount, histfilecount;
+	char **argv = NULL, s[MAX];
+	char * path;
+	int pathSet = FALSE;
+	LinkedList * aliasList = linkedList();
+	LinkedList * historyList = linkedList();
+	
+	//check if .msshrc exits
+	FILE * fp = fopen("~/.msshrc", "r");
+
+	if (fp == NULL) {
+		//get histcount from file
+		histcount = getHistCount(fp, s);
+
+		//get histfilecount from file
+		histfilecount = getHistFileCount(fp, s);
+
+		//get aliases	
+		fgets(s, MAX, fp);
+		strip(s);
+
+		argc = makealiasargs(s, &argv);
+		
+		while(strcmp(argv[0], "PATH") == 0) {
+			addLast(aliasList, buildNode_Type(buildAliasType_Args(argv[0], argv[1])));
+		}
+
+		//set path variable
+		if(argv[1] != NULL) {
+			path = (char *)calloc(strlen(argv[1]) + 1, sizeof(char));
+			strcpy(path, argv[1]);
+			pathSet = TRUE;	
+		}
+		
+	
+	}
+	else {
+		histcount = 100;
+		histfilecount = 1000;
+	}
+
+	
+  	printf("command?: ");
+  	fgets(s, MAX, stdin);
+  	strip(s);
+
+  	while(strcmp(s, "exit") != 0) {
+		if(strcmp(s, "history") == 0) {
+			argc = makeargs(s, &argv);
+			addLast(historyList, buildNode_Type(buildType_Args(argc, argv)));
+         printList(historyList, printType);
+      }
+		else
+		{
+			argc = makeargs(s, &argv);
+			addLast(historyList, buildNode_Type(buildType_Args(argc, argv)));
+
+		}// end else
+
+		printf("command?: ");
+	  	fgets(s, MAX, stdin);
+      strip(s);	 
+
+  	}// end while
+
+	clearList(historyList, cleanType);
+   	free(historyList);
+   	historyList = NULL;
+
+	clearList(aliasList, cleanAliasType);
+   	free(aliasList);
+   	aliasList = NULL;
+
+   	printf("Program Ended\n");
+
+  	return 0;
+
+}// end main
+
+
+
+
+
+
+
