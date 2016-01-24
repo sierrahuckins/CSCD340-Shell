@@ -36,7 +36,7 @@ int containsPipe(char *s) {
 		newStr = NULL;
 	}
 	
-	printf("The string contains %d pipe(s).\n", tokens);
+	//printf("The string contains %d pipe(s).\n", tokens);
 
 	return tokens;
 }

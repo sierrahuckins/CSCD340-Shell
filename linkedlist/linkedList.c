@@ -107,7 +107,19 @@ void removeFirst(LinkedList * theList, void (*removeData)(void *)) {
 		free(removed);
 		removed = NULL;
 
-		theList->size = theList->size--;
+		theList->size = (theList->size) - 1;
+
+	}
+}
+
+void * retrieveFirst(LinkedList * theList) {
+	//check if passed in list is null
+	if (theList == NULL)
+		exit(-99);
+
+//passed preconditions, continue with function
+	else {
+		return theList->head->next;
 
 	}
 }

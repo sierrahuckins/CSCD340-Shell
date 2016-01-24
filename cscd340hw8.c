@@ -18,7 +18,9 @@
 
 int main()
 {
-	int argc, histcount, histfilecount;
+	int argc, histcount, histfilecount, linesfromhistory;
+	int historyentriesadded = 0;
+	int histfilelines = 0;
 	char **argv = NULL, s[MAX], temp[MAX];
 	char * path = NULL;
 	int pathSet = FALSE;
@@ -27,6 +29,7 @@ int main()
 	char ** prePipe = NULL, ** postPipe = NULL;
 	int preCount = 0, postCount = 0;
 	FILE * fp = NULL;
+	FILE * tempFile = NULL;
 	alias * checkAliasArgs = NULL;
 
 	//check if .msshrc exists and setup variables if it does
@@ -96,28 +99,59 @@ int main()
 
 	//close .msshrc
 	fclose(fp);
+	strcpy(s, "");
 
 	//check if .mssh_history exists
 	fp = fopen("/home/shuckins/.mssh_history", "r");
 
 	if (fp != NULL) {
-		//read all history entries into linked list
+		//find out how many lines are in history
 		fgets(s, MAX, fp);
-		strip(s);
 
-		while(!feof(fp)) {
-			argc = makehistoryargs(s, &argv);
-
-			addLast(historyList, buildNode_Type(buildHistoryType_Args(argc, argv)));
-
+		while (!feof(fp)) {
+			if (strcmp(s, "") != 0)
+				histfilelines++;
 			fgets(s, MAX, fp);
-			strip(s);
 		}
 
+		//figure out how many lines in history we need to skip and skip those
+		int skip = histfilelines - histcount;
+		if (skip < 0)
+			skip = 0;
+
+		rewind(fp);
+
+		int y;
+		for (y = 0; y < skip; y++) {
+			fgets(s, MAX, fp);
+		}
+
+		//read history entries into linked list
+		int x;
+		for (x = 0; x < histcount && x < histfilelines; x++) {
+			if (strcmp(s, "") != 0) {
+				fgets(s, MAX, fp);
+				strip(s);
+
+				argc = makehistoryargs(s, &argv);
+
+				addLast(historyList, buildNode_Type(buildHistoryType_Args(argc, argv)));
+			}
+		}
+
+		//going to use this variable to not double write some history entries later
+		linesfromhistory = x;
+
+	}
+	//else if it doesn't exist, create it
+	else {
+		fp = fopen("/home/shuckins/.mssh_history", "w");
 	}
 
 	//close .mssh_history
 	fclose(fp);
+
+	printList(historyList, printHistoryType);
 
 	//request command from user
   	printf("command?: ");
@@ -132,11 +166,17 @@ int main()
 		Node * lastHistory= retrieveLast(historyList);
 
 		//either add to history or clean up the args we've made if it already matches last history entry
-		if(compareHistory(currentArgs, lastHistory->data) != 0) {
+		if (historyList->size == 0) {
+			addLast(historyList, buildNode_Type(currentArgs));
+			historyentriesadded++;
+			printList(historyList, printHistoryType);
+		}
+		else if(compareHistory(currentArgs, lastHistory->data) != 0) {
 			//makesure we're not over histcount
 			if (historyList->size >= histcount)
 				removeFirst(historyList, cleanTypeHistory);
 			addLast(historyList, buildNode_Type(currentArgs));
+			historyentriesadded++;
 			printList(historyList, printHistoryType);
 		}
 		else {
@@ -216,13 +256,83 @@ int main()
 		}
 
 
-		printList(historyList, printHistoryType);
+		//printList(historyList, printHistoryType);
 
 		printf("command?: ");
 	  	fgets(s, MAX, stdin);
 		strip(s);
 
   	}// end while
+
+	//write out to .msshrc_history
+	fp = fopen("/home/shuckins/.mssh_history", "r");
+
+	if (fp != NULL) {
+		//create temp file to write to
+		tempFile = fopen("/home/shuckins/temp", "w");
+
+		//figure out how many lines in history we need to skip and skip those
+		int totalHistory = histfilelines + historyList->size;
+		int skip = totalHistory - histfilecount;
+		if (skip < 0)
+			skip = 0;
+
+		int w;
+		for (w = 0; w < skip; w++) {
+			fgets(s, MAX, fp);
+		}
+
+		//read history entries into templist
+		rewind(fp);
+
+		int x;
+		for (x = 0; x < histcount && x < histfilelines; x++){
+			fgets(s, MAX, fp);
+			fputs(s, tempFile);
+		}
+
+		//determine if we need to skip some historylist entries (that were already in list)
+		skip = linesfromhistory;
+		if (historyList->size == histcount)
+			skip = skip - historyentriesadded;
+		if (skip < 0)
+			skip = 0;
+
+		int y;
+		for (y = 0; y < skip; y++) {
+			removeFirst(historyList, cleanTypeHistory);
+		}
+
+		//read historylist into templist
+		for (y = 0; y <= historyList->size; y++) {
+			Node * curr = retrieveFirst(historyList);
+			history * listing = (history *)curr->data;
+
+			int z;
+			for (z = 0; z < listing->argc; z++) {
+				fputs(listing->argv[z], tempFile);
+				fputs(" ", tempFile);
+			}
+
+			fputs("\n", tempFile);
+			removeFirst(historyList, cleanTypeHistory);
+		}
+
+		//close files
+		fclose(fp);
+		fclose(tempFile);
+
+		//delete old file
+		remove("/home/shuckins/.mssh_history");
+
+		//rename temp file
+		rename("/home/shuckins/temp", "/home/shuckins/.mssh_history");
+	}
+	//else report error
+	else {
+		printf("There was an error opening .msshrc_history. No history written.");
+	}
+
 
 	if (pathSet == TRUE) {
 		free(path);
