@@ -88,6 +88,9 @@ int main()
 				cleanTypeAlias(buildAliasType_Args(argv));
 			}
 		}
+
+		//close .msshrc
+		fclose(fp);
 	}
 	else {
 		//printf("Error opening file: %s.\n", strerror(errno));
@@ -97,8 +100,6 @@ int main()
 
 	printList(aliasList, printAliasType);
 
-	//close .msshrc
-	fclose(fp);
 	strcpy(s, "");
 
 	//check if .mssh_history exists
@@ -140,7 +141,7 @@ int main()
 		}
 
 		//going to use this variable to not double write some history entries later
-		linesfromhistory = x;
+		linesfromhistory = skip + x;
 
 	}
 	//else if it doesn't exist, create it
@@ -198,9 +199,22 @@ int main()
 				checkAliasArgs = (alias *)buildAliasType_Args(argv);
 				Node * prePipeNode = buildNode_Type(checkAliasArgs);
 
-				prePipeNode = findInList(aliasList, prePipeNode, compareAlias);
-				checkAliasArgs = (alias *)prePipeNode->data;
-				preCount = makeargs(checkAliasArgs->argv[1], &prePipe);
+				int foundAlias = 0;
+				foundAlias = findInList(aliasList, prePipeNode, compareAlias);
+
+				if (foundAlias == 1) {
+					checkAliasArgs = (alias *) prePipeNode->data;
+					argc = makeargs(checkAliasArgs->argv[1], &argv);
+
+					free(checkAliasArgs);
+				}
+				else {
+					free(prePipeNode->data);
+					prePipeNode->data = NULL;
+				}
+
+				free(prePipeNode);
+				prePipeNode = NULL;
 			}
 
 			//split off post pipe
@@ -212,9 +226,22 @@ int main()
 				checkAliasArgs = (alias *)buildAliasType_Args(argv);
 				Node * postPipeNode = buildNode_Type(checkAliasArgs);
 
-				postPipeNode = findInList(aliasList, postPipeNode, compareAlias);
-				checkAliasArgs = (alias *)postPipeNode->data;
-				postCount = makeargs(checkAliasArgs->argv[1], &postPipe);
+				int foundAlias = 0;
+				foundAlias = findInList(aliasList, postPipeNode, compareAlias);
+
+				if (foundAlias == 1) {
+					checkAliasArgs = (alias *) postPipeNode->data;
+					argc = makeargs(checkAliasArgs->argv[1], &argv);
+
+					free(checkAliasArgs);
+				}
+				else {
+					free(postPipeNode->data);
+					postPipeNode->data = NULL;
+				}
+
+				free(postPipeNode);
+				postPipeNode = NULL;
 			}
 
 			//do the pipe!
@@ -231,9 +258,26 @@ int main()
 				checkAliasArgs = (alias *)buildAliasType_Args(argv);
 				Node * commandNode = buildNode_Type(checkAliasArgs);
 
-				commandNode = findInList(aliasList, commandNode, compareAlias);
-				checkAliasArgs = (alias *)commandNode->data;
-				argc = makeargs(checkAliasArgs->argv[1], &argv);
+				int foundAlias = 0;
+				foundAlias = findInList(aliasList, commandNode, compareAlias);
+
+				if (foundAlias == 1) {
+					checkAliasArgs = (alias *) commandNode->data;
+
+					//clean our makeargs
+					//clean(argc, argv);
+
+					//and replace with new
+					argc = makeargs(checkAliasArgs->argv[1], &argv);
+
+				}
+
+				//free memory used to check for alias
+				free(commandNode->data);
+				commandNode->data = NULL;
+
+				free(commandNode);
+				commandNode = NULL;
 			}
 
 			//fork a child to execute command
@@ -253,6 +297,9 @@ int main()
 					exit(-1);
 				}
 			}
+
+			//clean our makeargs
+			clean(argc, argv);
 		}
 
 
@@ -271,8 +318,15 @@ int main()
 		//create temp file to write to
 		tempFile = fopen("/home/shuckins/temp", "w");
 
+		//determine if we need to skip some historylist entries (that were already in list)
+		int skipListEntries = linesfromhistory;
+		if (historyList->size == histcount)
+			skipListEntries = skipListEntries - historyentriesadded;
+		if (skipListEntries < 0)
+			skipListEntries = 0;
+
 		//figure out how many lines in history we need to skip and skip those
-		int totalHistory = histfilelines + historyList->size;
+		int totalHistory = (histfilelines + historyList->size - skipListEntries) - histcount;
 		int skip = totalHistory - histfilecount;
 		if (skip < 0)
 			skip = 0;
@@ -282,29 +336,22 @@ int main()
 			fgets(s, MAX, fp);
 		}
 
-		//read history entries into templist
-		rewind(fp);
+		fgets(s, MAX, fp);
 
-		int x;
-		for (x = 0; x < histcount && x < histfilelines; x++){
-			fgets(s, MAX, fp);
+		//read rest of old history file into temp
+		while (!feof(fp)) {
 			fputs(s, tempFile);
+			fgets(s, MAX, fp);
 		}
 
-		//determine if we need to skip some historylist entries (that were already in list)
-		skip = linesfromhistory;
-		if (historyList->size == histcount)
-			skip = skip - historyentriesadded;
-		if (skip < 0)
-			skip = 0;
-
+		//skip over history list entries that would be duplicates
 		int y;
-		for (y = 0; y < skip; y++) {
+		for (y = 0; y < skipListEntries; y++) {
 			removeFirst(historyList, cleanTypeHistory);
 		}
 
 		//read historylist into templist
-		for (y = 0; y <= historyList->size; y++) {
+		while (historyList->size > 0) {
 			Node * curr = retrieveFirst(historyList);
 			history * listing = (history *)curr->data;
 

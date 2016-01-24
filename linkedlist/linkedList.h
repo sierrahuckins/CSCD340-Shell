@@ -100,7 +100,7 @@ void removeFirst(LinkedList * theList, void (*removeData)(void *));
 
 void * retrieveLast(LinkedList * theList);
 
-void * findInList(LinkedList * theList, void * toFind, int (*compare)(const void *, const void *));
+int findInList(LinkedList * theList, void * toFind, int (*compare)(const void *, const void *));
 
 
 /**

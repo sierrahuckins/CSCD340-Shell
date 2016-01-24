@@ -142,7 +142,7 @@ void * retrieveLast(LinkedList * theList) {
 	}
 }
 
-void * findInList(LinkedList * theList, void * toFind, int (*compare)(const void *, const void *)) {
+int findInList(LinkedList * theList, void * toFind, int (*compare)(const void *, const void *)) {
 	Node * nodeToFind = (Node *)toFind;
 
 	//check if passed in list is null
@@ -156,14 +156,15 @@ void * findInList(LinkedList * theList, void * toFind, int (*compare)(const void
 		while (curr != NULL) {
 			//if data is equal to given node, then return new Node
 			if (compare(curr->data, nodeToFind->data) == 0) {
-				return curr;
+				toFind = curr;
+				return 1;
 			}
 			//not the node we're looking for, so move on
 			else {
 				curr = curr->next;
 			}
 		}
-		return toFind;
+		return 0;
 	}
 }
 
