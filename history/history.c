@@ -23,14 +23,17 @@ int makehistoryargs(char *s, char *** argv) {
 		//delimiters
 		char delimiters[]= " \t\n";
 
-		//make a copy of str (statically MAX, dynamically strlen)
-		char * newStr = (char *) calloc(strlen(s) + 1, sizeof(char));
+//make a copy of str (statically MAX, dynamically strlen)
+		char newStr1[MAX];
+		strcpy(newStr1, s);
 
-		strcpy(newStr, s);
+		//char *newStr2 = (char *) calloc(strlen(s) + 1, sizeof(char));
+		char newStr2[MAX];
+		strcpy(newStr2, s);
 
 		//count tokens in copy
 		int tokens = 0;
-		char * token = strtok_r(newStr, delimiters, &save);
+		char * token = strtok_r(newStr1, delimiters, &save);
 
 		while (token != NULL) {
 			tokens++;
@@ -40,18 +43,19 @@ int makehistoryargs(char *s, char *** argv) {
 		//make number of rows of char *
 		*(argv) = (char **)calloc(tokens + 1, sizeof(char *));
 
+		//copy in s again
+		//strcpy(newStr, s);
+
 		//pull off each token, dynamically allocate memory
-		char * tempStrTok = strtok_r(s, delimiters, &save);
+		char * tempStrTok = strtok_r(newStr2, delimiters, &save);
 
 		int x;
 		for (x = 0; x < tokens; x++) {
 
-			char * tempStr = (char *) calloc(strlen(tempStrTok) + 1, sizeof(char));
+			(*argv)[x] = (char *)calloc(strlen(tempStrTok) + 1, sizeof(char));
 
 			//strcpy into dynamically allocated memory
-			strcpy(tempStr, tempStrTok);
-
-			argv[0][x] = tempStr;
+			strcpy((*argv)[x], tempStrTok);
 
 			//get next token
 			tempStrTok = strtok_r(NULL, delimiters, &save);
@@ -59,10 +63,6 @@ int makehistoryargs(char *s, char *** argv) {
 
 		//set last row in array to null terminator
 		argv[0][tokens] = '\0';
-
-		//if cpy of str was dynamic, you free it
-		free(newStr);
-		newStr = NULL;
 
 		//return temp
 		return tokens;

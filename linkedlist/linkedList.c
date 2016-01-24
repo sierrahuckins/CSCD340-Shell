@@ -130,6 +130,31 @@ void * retrieveLast(LinkedList * theList) {
 	}
 }
 
+void * findInList(LinkedList * theList, void * toFind, int (*compare)(const void *, const void *)) {
+	Node * nodeToFind = (Node *)toFind;
+
+	//check if passed in list is null
+	if (theList == NULL)
+		exit(-99);
+	//passed preconditions, continue with function
+	else {
+		Node * curr = theList->head->next;
+
+		//cycle through list and compare
+		while (curr != NULL) {
+			//if data is equal to given node, then return new Node
+			if (compare(curr->data, nodeToFind->data) == 0) {
+				return curr;
+			}
+			//not the node we're looking for, so move on
+			else {
+				curr = curr->next;
+			}
+		}
+		return toFind;
+	}
+}
+
 
 /**
  * @brief The remove item function for the linked list

@@ -19,6 +19,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../history/history.h"
+#include "../alias/alias.h"
+
 /**
  * @brief The node structure.
  *
@@ -94,6 +97,8 @@ void addFirst(LinkedList * theList, Node * nn);
 void removeFirst(LinkedList * theList, void (*removeData)(void *));
 
 void * retrieveLast(LinkedList * theList);
+
+void * findInList(LinkedList * theList, void * toFind, int (*compare)(const void *, const void *));
 
 
 /**

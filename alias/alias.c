@@ -29,14 +29,12 @@ int makealiasargs(char *s, char *** argv) {
 
 			//if this is an alias we need to remove the front part
 			if (x == 0 && strcmp(tempStrTok, "PATH") != 0) {
-				char * tempStr = (char *)calloc(strlen(tempStrTok) + 1 - 6, sizeof(char));
-				strcpy(tempStr, &tempStrTok[6]);
-				argv[0][x] = tempStr;
+				(*argv)[x] = (char *)calloc(strlen(tempStrTok) + 1 - 6, sizeof(char));
+				strcpy((*argv)[x], &tempStrTok[6]);
 			}
 			else {
-				char * tempStr = (char *) calloc(strlen(tempStrTok) + 1, sizeof(char));
-				strcpy(tempStr, tempStrTok);
-				argv[0][x] = tempStr;
+				(*argv)[x] = (char *) calloc(strlen(tempStrTok) + 1, sizeof(char));
+				strcpy((*argv)[x], tempStrTok);
 			}
 
 			//get next token
@@ -112,7 +110,10 @@ void printAliasType(void * passedIn) {
  * @warning - The passed in void * p2 is checked - exit(-99) if NULL
  */
 int compareAlias(const void * p1, const void * p2) {
-	return strcmp((char *)p1, (char *)p2);
+	alias * one = (alias *)p1;
+	alias * two = (alias *)p2;
+
+	return strcmp(one->argv[0], two->argv[0]);
 }
 
 

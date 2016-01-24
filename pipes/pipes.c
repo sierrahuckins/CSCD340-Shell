@@ -165,9 +165,7 @@ void pipeIt(char ** prePipe, char ** postPipe){
 			
 			//deal with bad result from exec
 			if (result == -1) {
-				clean(2, prePipe);
-        	clean(2, postPipe);
-exit(-1);
+				exit(-1);
 			}
 	
 		}// end if AKA parent

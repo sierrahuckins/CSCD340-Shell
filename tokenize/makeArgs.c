@@ -22,61 +22,56 @@ void printargs(int argc, char **argv)
 
 }// end printargs
 
-int makeargs(char *s, char *** argv)
-{
+int makeargs(char *s, char *** argv) {
 	if (s == NULL) {
 		return -1;
 	}
 	else {
-		//save pointer for strtok_r
-		char * save;
+//save pointer for strtok_r
+		char *save1, *save2;
 
-		//delimiters
-		char delimiters[]= " \t\n";
+//delimiters
+		char delimiters[] = " \t\n";
 
-		//make a copy of str (statically MAX, dynamically strlen)
-		char * newStr = (char *) calloc(strlen(s) + 1, sizeof(char));
+//make a copy of str (statically MAX, dynamically strlen)
+		char newStr1[MAX];
+		strcpy(newStr1, s);
 
-		strcpy(newStr, s);
+		//char *newStr2 = (char *) calloc(strlen(s) + 1, sizeof(char));
+		char newStr2[MAX];
+		strcpy(newStr2, s);
 
-		//count tokens in copy
+//count tokens in copy
 		int tokens = 0;
-		char * token = strtok_r(newStr, delimiters, &save);
+		char *token = strtok_r(newStr1, delimiters, &save1);
 
 		while (token != NULL) {
 			tokens++;
-			token =  strtok_r(NULL, delimiters, &save);
+			token = strtok_r(NULL, delimiters, &save1);
 		}
 
-		//make number of rows of char *
-		*(argv) = (char **)calloc(tokens + 1, sizeof(char *));
+//make number of rows of char *
+		*(argv) = (char **) calloc(tokens + 1, sizeof(char *));
 
-		//pull off each token, dynamically allocate memory
-		char * tempStrTok = strtok_r(s, delimiters, &save);
+//pull off each token, dynamically allocate memory
+		char *tempStrTok = strtok_r(newStr2, delimiters, &save2);
 
-		int x;
-		for (x = 0; x < tokens; x++) {
+		int x = 0;
+		while (tempStrTok != NULL) {
+			(*argv)[x] = (char *) calloc(strlen(tempStrTok) + 1, sizeof(char));
 
-			char * tempStr = (char *) calloc(strlen(tempStrTok) + 1, sizeof(char));
+//strcpy into dynamically allocated memory
+			strcpy((*argv)[x], tempStrTok);
+			x++;
 
-			//strcpy into dynamically allocated memory
-			strcpy(tempStr, tempStrTok);
-
-			argv[0][x] = tempStr;
-
-			//get next token
-			tempStrTok = strtok_r(NULL, delimiters, &save);
+//get next token
+			tempStrTok = strtok_r(NULL, delimiters, &save2);
 		}
 
-		//set last row in array to null terminator
-		argv[0][tokens] = '\0';
+//set last row in array to null terminator
+		(*argv)[tokens] = '\0';
 
-		//if cpy of str was dynamic, you free it
-		free(newStr);
-		newStr = NULL;
-
-		//return temp
+//return temp
 		return tokens;
 	}
-
-}// end makeArgs
+}

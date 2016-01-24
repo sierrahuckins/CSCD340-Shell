@@ -1,9 +1,9 @@
 CC=gcc
 
-lab8:	./history/history.o ./linkedlist/linkedList.o ./linkedlist/listUtils.o ./utils/myUtils.o ./alias/alias.o ./utils/msshrcUtils.o ./pipes/pipes.o
-	gcc -g -o lab8 cscd340hw8.c ./history/history.o ./linkedlist/linkedList.o ./linkedlist/listUtils.o ./utils/myUtils.o ./alias/alias.o ./utils/msshrcUtils.o
+lab8:	./history/history.o ./linkedlist/linkedList.o ./linkedlist/listUtils.o ./utils/myUtils.o ./alias/alias.o ./utils/msshrcUtils.o ./pipes/pipes.o ./tokenize/makeArgs.o
+	gcc -g -o lab8 cscd340hw8.c ./history/history.o ./linkedlist/linkedList.o ./linkedlist/listUtils.o ./utils/myUtils.o ./alias/alias.o ./utils/msshrcUtils.o ./pipes/pipes.o ./tokenize/makeArgs.o
 
-linkedList.o:	./linkedlist/linkedList.h ./linkedlist/linkedList.c .
+linkedList.o:	./linkedlist/linkedList.h ./linkedlist/linkedList.c 
 	gcc -c -g ./linkedlist/linkedList.c
 
 listUtils.o:	./linkedlist/listUtils.c ./linkedlist/listUtils.h
@@ -24,9 +24,15 @@ alias.o:	./alias/alias.c ./alias/alias.h
 pipes.o:	./pipes/pipes.c ./pipes/pipes.h
 	gcc -c -g ./pipes/pipes.c
 
+makeArgs.o:	./tokenize/makeArgs.c ./tokenize/makeArgs.h
+	gcc -c -g ./tokenize/makeArgs.c
+
 clean:	
 	rm history/*.o
 	rm alias/*.o
 	rm linkedlist/*.o
+	rm utils/msshrcUtils.o
+	rm pipes/*.o
+	rm tokenize/*.o
 	rm lab8
 
