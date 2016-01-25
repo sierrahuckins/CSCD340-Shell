@@ -8,11 +8,13 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include "../linkedlist/linkedList.h"
+#include "../redirect/redirect.h"
 
 int containsPipe(char *s);
 char ** parsePrePipe(char *s, int * preCount);
 char ** parsePostPipe(char *s, int * postCount);
-void pipeIt(char ** prePipe, char ** postPipe);
+void pipeIt(char * s, LinkedList * aliasList);
 
 #endif 
 

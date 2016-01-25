@@ -1,5 +1,10 @@
 #include "pipes.h"
 #include "../tokenize/makeArgs.h"
+#include "../redirect/redirect.h"
+#include "../alias/alias.h"
+#include "../linkedlist/linkedList.h"
+#include "../linkedlist/listUtils.h"
+#include "../redirect/redirect.h"
 
 int containsPipe(char *s) {
 	int tokens;
@@ -67,8 +72,17 @@ char ** parsePrePipe(char *s, int * preCount) {
 		//strcpy into dynamically allocated memory
 		strcpy(tempStr, tempStrTok);
 
-		//call makeargs with only prestring
-		*preCount = makeargs(tempStr, &argv);
+		//check if contains a redirect
+		if (strstr(tempStr, "<") != NULL) {
+			*preCount = redirectIn(tempStr, &argv);
+		}
+		else if (strstr(tempStr, ">") != NULL) {
+			*preCount = redirectOut(tempStr, &argv);
+		}
+			//else call makeargs with only poststring
+		else {
+			*preCount = makeargs(tempStr, &argv);
+		}
 
 		//print result to screen
 		printf("The prePipe string is: ");
@@ -113,8 +127,17 @@ char ** parsePostPipe(char *s, int * postCount){
 		//strcpy into dynamically allocated memory
 		strcpy(tempStr, tempStrTok);
 
-		//call makeargs with only poststring
-		*postCount = makeargs(tempStr, &argv);
+		//check if contains a redirect
+		if (strstr(tempStr, "<") != NULL) {
+			*postCount = redirectIn(tempStr, &argv);
+		}
+		else if (strstr(tempStr, ">") != NULL) {
+			*postCount = redirectOut(tempStr, &argv);
+		}
+		//else call makeargs with only poststring
+		else {
+			*postCount = makeargs(tempStr, &argv);
+		}
 
 		//print result to screen
 		printf("The postPipe string is: ");
@@ -130,7 +153,14 @@ char ** parsePostPipe(char *s, int * postCount){
 	}
 }
 
-void pipeIt(char ** prePipe, char ** postPipe){
+void pipeIt(char * s, LinkedList * aliasList){
+	char ** argv;
+	int argc;
+	int preCount = 0, postCount = 0;
+	char ** prePipe,  ** postPipe;
+	alias * checkAliasArgs = NULL;
+
+	//////////////////////////////////
 	pid_t pid;
 	int fd[2], res, status;
 
@@ -153,6 +183,34 @@ void pipeIt(char ** prePipe, char ** postPipe){
 
 		if(pid != 0)
 		{
+			//split off post pipe
+			postPipe = parsePostPipe(s, &postCount);
+			argv = postPipe;
+
+			//check if postPipe is an alias and update if necessary
+			if (postCount == 1) {
+				checkAliasArgs = (alias *)buildAliasType_Args(argv);
+				Node * postPipeNode = buildNode_Type(checkAliasArgs);
+
+				int foundAlias = 0;
+				foundAlias = findInList(aliasList, postPipeNode, compareAlias);
+
+				if (foundAlias == 1) {
+					checkAliasArgs = (alias *) postPipeNode->data;
+
+					//clean our makeargs
+					//clean(argc, argv);
+
+					//and replace with new
+					argc = makeargs(checkAliasArgs->argv[1], &argv);
+				}
+				free(postPipeNode->data);
+				postPipeNode->data = NULL;
+
+				free(postPipeNode);
+				postPipeNode = NULL;
+			}
+
 			//close the write end of the parent's pipe
 			close(fd[1]);
 
@@ -171,6 +229,34 @@ void pipeIt(char ** prePipe, char ** postPipe){
 		}// end if AKA parent
 		else
 		{
+			//split off prepipe
+			prePipe = parsePrePipe(s, &preCount);
+			argv = prePipe;
+
+			//check if prePipe is an alias and update if necessary
+			if (preCount == 1) {
+				checkAliasArgs = (alias *)buildAliasType_Args(argv);
+				Node * prePipeNode = buildNode_Type(checkAliasArgs);
+
+				int foundAlias = 0;
+				foundAlias = findInList(aliasList, prePipeNode, compareAlias);
+
+				if (foundAlias == 1) {
+					checkAliasArgs = (alias *) prePipeNode->data;
+
+					//clean our makeargs
+					//clean(argc, argv);
+
+					//and replace with new
+					argc = makeargs(checkAliasArgs->argv[1], &argv);
+				}
+				free(prePipeNode->data);
+				prePipeNode->data = NULL;
+
+				free(prePipeNode);
+				prePipeNode = NULL;
+			}
+
 			close(fd[0]);
 			close(1);
 			dup(fd[1]);
@@ -183,4 +269,7 @@ void pipeIt(char ** prePipe, char ** postPipe){
 			}
 		}// end else AKA child
 	}
+
+	clean(preCount, prePipe);
+	clean(postCount, postPipe);
 }

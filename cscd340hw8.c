@@ -11,6 +11,7 @@
 #include "./alias/alias.h"
 #include "./pipes/pipes.h"
 #include "./tokenize/makeArgs.h"
+#include "./redirect/redirect.h"
 
 #define MAX 100
 #define TRUE 1
@@ -27,7 +28,6 @@ int main()
 	LinkedList * aliasList = linkedList();
 	LinkedList * historyList = linkedList();
 	char ** prePipe = NULL, ** postPipe = NULL;
-	int preCount = 0, postCount = 0;
 	FILE * fp = NULL;
 	FILE * tempFile = NULL;
 	alias * checkAliasArgs = NULL;
@@ -143,14 +143,13 @@ int main()
 		//going to use this variable to not double write some history entries later
 		linesfromhistory = skip + x;
 
+		//close .mssh_history
+		fclose(fp);
 	}
 	//else if it doesn't exist, create it
 	else {
 		fp = fopen("/home/shuckins/.mssh_history", "w");
 	}
-
-	//close .mssh_history
-	fclose(fp);
 
 	printList(historyList, printHistoryType);
 
@@ -190,96 +189,11 @@ int main()
 
 		//split if necessary
 		if (pipes > 0) {
-			//split off prepipe
-			prePipe = parsePrePipe(s, &preCount);
-			argv = prePipe;
-
-			//check if prePipe is an alias and update if necessary
-			if (preCount == 1) {
-				checkAliasArgs = (alias *)buildAliasType_Args(argv);
-				Node * prePipeNode = buildNode_Type(checkAliasArgs);
-
-				int foundAlias = 0;
-				foundAlias = findInList(aliasList, prePipeNode, compareAlias);
-
-				if (foundAlias == 1) {
-					checkAliasArgs = (alias *) prePipeNode->data;
-					argc = makeargs(checkAliasArgs->argv[1], &argv);
-
-					free(checkAliasArgs);
-				}
-				else {
-					free(prePipeNode->data);
-					prePipeNode->data = NULL;
-				}
-
-				free(prePipeNode);
-				prePipeNode = NULL;
-			}
-
-			//split off post pipe
-			postPipe = parsePostPipe(s, &postCount);
-			argv = postPipe;
-
-			//check if postPipe is an alias and update if necessary
-			if (postCount == 1) {
-				checkAliasArgs = (alias *)buildAliasType_Args(argv);
-				Node * postPipeNode = buildNode_Type(checkAliasArgs);
-
-				int foundAlias = 0;
-				foundAlias = findInList(aliasList, postPipeNode, compareAlias);
-
-				if (foundAlias == 1) {
-					checkAliasArgs = (alias *) postPipeNode->data;
-					argc = makeargs(checkAliasArgs->argv[1], &argv);
-
-					free(checkAliasArgs);
-				}
-				else {
-					free(postPipeNode->data);
-					postPipeNode->data = NULL;
-				}
-
-				free(postPipeNode);
-				postPipeNode = NULL;
-			}
-
 			//do the pipe!
-			pipeIt(prePipe, postPipe);
-			clean(preCount, prePipe);
-			clean(postCount, postPipe);
+			pipeIt(s, aliasList);
 		}
 		//else handle like a normal command
 		else {
-			//check if command is an alias and update if necessary
-			argc = makeargs(s, &argv);
-
-			if (argc == 1) {
-				checkAliasArgs = (alias *)buildAliasType_Args(argv);
-				Node * commandNode = buildNode_Type(checkAliasArgs);
-
-				int foundAlias = 0;
-				foundAlias = findInList(aliasList, commandNode, compareAlias);
-
-				if (foundAlias == 1) {
-					checkAliasArgs = (alias *) commandNode->data;
-
-					//clean our makeargs
-					//clean(argc, argv);
-
-					//and replace with new
-					argc = makeargs(checkAliasArgs->argv[1], &argv);
-
-				}
-
-				//free memory used to check for alias
-				free(commandNode->data);
-				commandNode->data = NULL;
-
-				free(commandNode);
-				commandNode = NULL;
-			}
-
 			//fork a child to execute command
 			pid_t pid;
 			int res, status;
@@ -290,6 +204,44 @@ int main()
 			}
 
 			else {
+				//check if contains a redirect and makeargs accordingly
+				if (strstr(s, "<") != NULL) {
+					argc = redirectIn(s, &argv);
+				}
+				else if (strstr(s, ">") != NULL) {
+					argc = redirectOut(s, &argv);
+				}
+					//else call makeargs with only poststring
+				else {
+					argc = makeargs(s, &argv);
+				}
+
+				if (argc == 1) {
+					checkAliasArgs = (alias *)buildAliasType_Args(argv);
+					Node * commandNode = buildNode_Type(checkAliasArgs);
+
+					int foundAlias = 0;
+					foundAlias = findInList(aliasList, commandNode, compareAlias);
+
+					if (foundAlias == 1) {
+						checkAliasArgs = (alias *) commandNode->data;
+
+						//clean our makeargs
+						//clean(argc, argv);
+
+						//and replace with new
+						argc = makeargs(checkAliasArgs->argv[1], &argv);
+
+					}
+
+					//free memory used to check for alias
+					free(commandNode->data);
+					commandNode->data = NULL;
+
+					free(commandNode);
+					commandNode = NULL;
+				}
+
 				int result = execvp(argv[0], argv);
 
 				//deal with bad result from exec
@@ -301,7 +253,6 @@ int main()
 			//clean our makeargs
 			clean(argc, argv);
 		}
-
 
 		//printList(historyList, printHistoryType);
 
