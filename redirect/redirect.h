@@ -12,8 +12,8 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-int redirectIn(char *s, char *** argv, int * inFD);
-int redirectOut(char *s, char *** argv, int * outFD);
+void redirectIn(char * s, char ** command);
+void redirectOut(char * s, char ** command);
 
 #endif 
 

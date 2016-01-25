@@ -37,6 +37,28 @@ void checkForAlias(char * s, char ** command, LinkedList * aliasList) {
 
 }
 
-void checkForRedirection(char * s, char ** command) {
+void checkForAliasToRemove(char * s, LinkedList * aliasList) {
+    Node * curr = aliasList->head->next;
 
+    while (curr != NULL) {
+        alias * currAlias = curr->data;
+
+        if (strcmp(s, currAlias->argv[0]) == 0) {
+            removeItem(aliasList, curr, cleanTypeAlias, compareAlias);
+            break;
+        }
+
+        curr = curr->next;
+    }
+
+}
+
+void checkForRedirection(char * s, char ** command) {
+    //check if contains a redirect and makeargs accordingly
+    if (strstr(s, "<") != NULL) {
+        redirectIn(s, command);
+    }
+    else if (strstr(s, ">") != NULL) {
+        redirectOut(s, command);
+    }
 }

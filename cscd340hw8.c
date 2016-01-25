@@ -222,6 +222,11 @@ int main()
 			checkForAlias(s, &command, aliasList);
 
 			/****************
+			 * MAKE ARGS FOR COMMAND
+			 ****************/
+			argc = makeargs(command, &argv);
+
+			/****************
 			 * FORK A CHILD FOR EXECUTION
 			 ****************/
 			pid_t pid;
@@ -237,10 +242,60 @@ int main()
 				/****************
 				 * SETUP REDIRECTION
 				 ****************/
-				exit(0);
-			}
+				//checkForRedirection(s, &command);
 
-			//free my command string
+				/****************
+				 * HANDLE COMMAND
+				 ****************/
+				//special case: alias
+				if (strcmp(argv[0], "alias") == 0) {
+					addLast(aliasList, buildNode_Type(buildAliasType_Args(argv)));
+
+					fgets(s, MAX, fp);
+
+					//if the line that was just grabbed was empty, move forward a line
+					while (strcmp(s, "\n") == 0 && !feof(fp))
+						fgets(s, MAX, fp);
+
+					if (!feof(fp)) {
+						strip(s);
+						argc = makealiasargs(s, &argv);
+					}
+				}
+				else if (strcmp(argv[0], "unalias") == 0) {
+					checkForAliasToRemove(argv[1], aliasList);
+				}
+				else if (strcmp(argv[0], "cd") == 0) {
+					//still need to figure this one out!!
+				}
+				else if (strcmp(*(argv[0]) + 1, '/033') == 0) {
+					//still need to figure this one out!!
+				}
+				else if (strcmp(argv[0], "history") == 0) {
+					printList(historyList, printHistoryType);
+				}
+				else if (strcmp(*(argv[0]) + 1, "!") == 0) {
+					if (strcmp(*(argv[0]) + 2, "!") == 0) {
+						//still need to figure this one out!!
+					}
+					else {
+						//still need to figure this one out!!
+					}
+				}
+				else if (strcmp(argv[0], "path") == 0) {
+					//think this might be PATH???
+					//figure this one out!
+				}
+				else {
+					if (pathSet == TRUE) {
+
+					}
+					else {
+
+					}
+				}
+			}
+			//free my command strings
 			free(command);
 			command = NULL;
 		}

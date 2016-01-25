@@ -1,6 +1,6 @@
 #include "redirect.h"
 
-int redirectIn(char *s, char *** argv, int * inFD){
+void redirectIn(char * s, char ** command){
 	if (s == NULL) {
 		exit(-1);
 	}
@@ -19,39 +19,30 @@ int redirectIn(char *s, char *** argv, int * inFD){
 		//pull off token, dynamically allocate memory
 		char * tempStrTok = strtok_r(newStr, delimiters, &save);
 
-		char * tempStr = (char *) calloc(strlen(tempStrTok) + 1, sizeof(char));
-
-		//strcpy into dynamically allocated memory
-		strcpy(tempStr, tempStrTok);
+		//dynamically allocate new memory
+		*command = (char *) calloc(strlen(tempStrTok) + 1, sizeof(char));
+		strcpy(*command, tempStrTok);
 
 		//get right side of token
 		tempStrTok = strtok_r(NULL, delimiters, &save);
 
 		char * newIn = (char *)calloc(strlen(tempStrTok) + 1, sizeof(char));
-
 		strcpy(newIn, tempStrTok);
 
 		//redirect stdin using newIn
-		*(inFD) = open(newIn, O_CREAT|O_APPEND|O_RDONLY, 0777);
+		int fd = open(newIn, O_CREAT|O_APPEND|O_RDONLY, 0777);
 		close(0);
-		dup(*(inFD));
+		dup(fd);
 
-		//check if contains a redirect
-		int argc = makeargs(tempStr, argv);
-		
 		//free dynamically allocated memory
 		free(newStr);
 		newStr = NULL;
-		free(tempStr);
-		newStr = NULL;
 		free(newIn);
 		newIn = NULL;
-
-		return argc;
 	}
 }
 
-int redirectOut(char *s, char *** argv, int * outFD){
+void redirectOut(char * s, char ** command) {
 	if (s == NULL) {
 		exit(-1);
 	}
@@ -70,34 +61,25 @@ int redirectOut(char *s, char *** argv, int * outFD){
 		//pull off token, dynamically allocate memory
 		char * tempStrTok = strtok_r(newStr, delimiters, &save);
 
-		char * tempStr = (char *) calloc(strlen(tempStrTok) + 1, sizeof(char));
-
-		//strcpy into dynamically allocated memory
-		strcpy(tempStr, tempStrTok);
+		//dynamically allocate new memory
+		*command = (char *) calloc(strlen(tempStrTok) + 1, sizeof(char));
+		strcpy(*command, tempStrTok);
 
 		//get right side of token
 		tempStrTok = strtok_r(NULL, delimiters, &save);
 
 		char * newOut = (char *)calloc(strlen(tempStrTok) + 1, sizeof(char));
-
 		strcpy(newOut, tempStrTok);
 
-		//redirect stdout using newIn
-		*(outFD) = open(newOut, O_CREAT|O_APPEND|O_WRONLY, 0777);
+		//redirect stdin using newIn
+		int fd = open(newOut, O_CREAT|O_APPEND|O_RDONLY, 0777);
 		close(1);
-		dup(*(outFD));
+		dup(fd);
 
-		//check if contains a redirect
-		int argc = makeargs(tempStr, argv);
-		
 		//free dynamically allocated memory
 		free(newStr);
 		newStr = NULL;
-		free(tempStr);
-		newStr = NULL;
 		free(newOut);
 		newOut = NULL;
-
-		return argc;
 	}
 }
