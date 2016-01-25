@@ -6,13 +6,17 @@
 #include "../linkedlist/listUtils.h"
 #include "../redirect/redirect.h"
 
+int inFD = 0;
+int outFD = 1;
+
 int containsPipe(char *s) {
 	int tokens;
 	
 	if (s == NULL) {
 		tokens = -1;
 	}
-	else {
+	else
+	{
 		//save pointer for strtok_r
 		char * save;
 
@@ -46,6 +50,46 @@ int containsPipe(char *s) {
 	return tokens;
 }
 
+void splitForPipe(char * s, char ** leftPipe, char ** rightPipe) {
+	if (s == NULL) {
+		exit(-1);
+	}
+	else {
+		//save pointer for strtok_r
+		char *save;
+
+		//delimiters
+		char delimiters[] = "|";
+
+		//copy string for tokenizing
+		char *newStr = (char *) calloc(strlen(s) + 1, sizeof(char));
+		strcpy(newStr, s);
+
+		//pull off token and dynamically allocate memory
+		char *tempStrTok = strtok_r(newStr, delimiters, &save);
+
+		//create new string for left pipe
+		*leftPipe = (char *) calloc(strlen(tempStrTok) + 1, sizeof(char));
+
+		//strcpy into dynamically allocated memory
+		strcpy(*leftPipe, tempStrTok);
+
+		//pull off token and dynamically allocate memory
+		tempStrTok = strtok_r(NULL, delimiters, &save);
+
+		//create new string for left pipe
+		*rightPipe = (char *) calloc(strlen(tempStrTok) + 1, sizeof(char));
+
+		//strcpy into dynamically allocated memory
+		strcpy(*rightPipe, tempStrTok);
+
+		//free dynamically allocated memory
+		free(newStr);
+		newStr = NULL;
+	}
+
+}
+
 char ** parsePrePipe(char *s, int * preCount) {
 	char ** argv;
 	
@@ -74,10 +118,10 @@ char ** parsePrePipe(char *s, int * preCount) {
 
 		//check if contains a redirect
 		if (strstr(tempStr, "<") != NULL) {
-			*preCount = redirectIn(tempStr, &argv);
+			*preCount = redirectIn(tempStr, &argv, &inFD);
 		}
 		else if (strstr(tempStr, ">") != NULL) {
-			*preCount = redirectOut(tempStr, &argv);
+			*preCount = redirectOut(tempStr, &argv, &outFD);
 		}
 			//else call makeargs with only poststring
 		else {
@@ -129,10 +173,10 @@ char ** parsePostPipe(char *s, int * postCount){
 
 		//check if contains a redirect
 		if (strstr(tempStr, "<") != NULL) {
-			*postCount = redirectIn(tempStr, &argv);
+			*postCount = redirectIn(tempStr, &argv, &inFD);
 		}
 		else if (strstr(tempStr, ">") != NULL) {
-			*postCount = redirectOut(tempStr, &argv);
+			*postCount = redirectOut(tempStr, &argv, &outFD);
 		}
 		//else call makeargs with only poststring
 		else {

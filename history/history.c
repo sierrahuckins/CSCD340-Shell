@@ -1,6 +1,10 @@
 #include "history.h"
 
-static int count = 0;
+static int count = 1;
+
+void incrementHistoryCount() {
+	count++;
+}
 
 /**
  * @brief The Make Args function from the last lab
@@ -86,7 +90,6 @@ void * buildHistoryType_Args(int argc, char **argv) {
 	data->argc = argc;
 	data->argv = argv;
 
-	count++;
 	data->number = count;
 	
 	return data;
@@ -168,8 +171,6 @@ int compareHistory(const void * p1, const void * p2) {
  */
 void cleanTypeHistory(void * passedIn) {
 	history * data = (history *)passedIn;
-
-	count--;
 
 	int x;
 	for (x = 0; x <= data->argc; x++) {

@@ -18,6 +18,8 @@ struct hist
 
 typedef struct hist history;
 
+void incrementHistoryCount();
+
 int makehistoryargs(char *s, char *** argv);
 
 /**

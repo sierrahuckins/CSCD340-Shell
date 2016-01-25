@@ -19,9 +19,9 @@
 
 int main()
 {
-	int argc, histcount, histfilecount, linesfromhistory;
+	int argc, histcount, histfilecount, linesFromOriginalHist;
 	int historyentriesadded = 0;
-	int histfilelines = 0;
+	int originalHistLength = 0;
 	char **argv = NULL, s[MAX], temp[MAX];
 	char * path = NULL;
 	int pathSet = FALSE;
@@ -31,6 +31,8 @@ int main()
 	FILE * fp = NULL;
 	FILE * tempFile = NULL;
 	alias * checkAliasArgs = NULL;
+	int inFD = 0;
+	int outFD = 1;
 
 	//check if .msshrc exists and setup variables if it does
 	fp = fopen("/home/shuckins/.msshrc", "r");
@@ -71,7 +73,7 @@ int main()
 			}
 
 			//set path variable
-			if (argv[1] != NULL && !feof(fp)) {
+			if (!feof(fp)) {
 				//save pointer for strtok_r
 				char * save;
 
@@ -80,8 +82,10 @@ int main()
 				//we need to remove the front part
 				char * truncatedStrTok = strtok_r(argv[1], ":", &save);
 
+				//copy to path variables
 				strcpy(path, save);
 
+				//set path flag
 				pathSet = TRUE;
 
 				//clean up the makealiasargs call
@@ -111,12 +115,12 @@ int main()
 
 		while (!feof(fp)) {
 			if (strcmp(s, "") != 0)
-				histfilelines++;
+				originalHistLength++;
 			fgets(s, MAX, fp);
 		}
 
 		//figure out how many lines in history we need to skip and skip those
-		int skip = histfilelines - histcount;
+		int skip = originalHistLength - histcount;
 		if (skip < 0)
 			skip = 0;
 
@@ -129,7 +133,7 @@ int main()
 
 		//read history entries into linked list
 		int x;
-		for (x = 0; x < histcount && x < histfilelines; x++) {
+		for (x = 0; x < histcount && x < originalHistLength; x++) {
 			if (strcmp(s, "") != 0) {
 				fgets(s, MAX, fp);
 				strip(s);
@@ -137,19 +141,20 @@ int main()
 				argc = makehistoryargs(s, &argv);
 
 				addLast(historyList, buildNode_Type(buildHistoryType_Args(argc, argv)));
+				incrementHistoryCount();
 			}
 		}
 
 		//going to use this variable to not double write some history entries later
-		linesfromhistory = skip + x;
-
-		//close .mssh_history
-		fclose(fp);
+		linesFromOriginalHist = historyList->size;
 	}
 	//else if it doesn't exist, create it
 	else {
 		fp = fopen("/home/shuckins/.mssh_history", "w");
 	}
+
+	//close .mssh_history
+	fclose(fp);
 
 	printList(historyList, printHistoryType);
 
@@ -160,6 +165,9 @@ int main()
 
 	//handle command if it wasn't exit
   	while(strcmp(s, "exit") != 0) {
+		/****************
+		 * HANDLE HISTORY
+		 ****************/
 		argc = makehistoryargs(s, &argv);
 		history * currentArgs = (history *)buildHistoryType_Args(argc, argv);
 
@@ -168,6 +176,7 @@ int main()
 		//either add to history or clean up the args we've made if it already matches last history entry
 		if (historyList->size == 0) {
 			addLast(historyList, buildNode_Type(currentArgs));
+			incrementHistoryCount();
 			historyentriesadded++;
 			printList(historyList, printHistoryType);
 		}
@@ -176,6 +185,7 @@ int main()
 			if (historyList->size >= histcount)
 				removeFirst(historyList, cleanTypeHistory);
 			addLast(historyList, buildNode_Type(currentArgs));
+			incrementHistoryCount();
 			historyentriesadded++;
 			printList(historyList, printHistoryType);
 		}
@@ -184,77 +194,56 @@ int main()
 			cleanTypeHistory(currentArgs);
 		}
 
-		//check for pipe
+		/****************
+		 * HANDLE PIPE
+		 ****************/
 		int pipes = containsPipe(s);
 
-		//split if necessary
 		if (pipes > 0) {
-			//do the pipe!
-			pipeIt(s, aliasList);
+			//split into left and right strings
+			char * leftPipe, * rightPipe;
+			splitForPipe(s, &leftPipe, &rightPipe);
+
+			//check for aliases
+			checkForAlias(leftPipe, &leftPipe, aliasList);
+			checkForAlias(rightPipe, &rightPipe, aliasList);
+
+			//free my pipe strings
+			free(leftPipe);
+			leftPipe = NULL;
+			free(rightPipe);
+			rightPipe = NULL;
 		}
 		//else handle like a normal command
 		else {
-			//fork a child to execute command
+			char * command;
+
+			//check for alias
+			checkForAlias(s, &command, aliasList);
+
+			/****************
+			 * FORK A CHILD FOR EXECUTION
+			 ****************/
 			pid_t pid;
 			int res, status;
 			pid = fork();
 
+			//parent will wait so it can return to original program
 			if(pid != 0) {
 				waitpid(pid, &status, 0);
 			}
-
+			//child will execute command
 			else {
-				//check if contains a redirect and makeargs accordingly
-				if (strstr(s, "<") != NULL) {
-					argc = redirectIn(s, &argv);
-				}
-				else if (strstr(s, ">") != NULL) {
-					argc = redirectOut(s, &argv);
-				}
-					//else call makeargs with only poststring
-				else {
-					argc = makeargs(s, &argv);
-				}
-
-				if (argc == 1) {
-					checkAliasArgs = (alias *)buildAliasType_Args(argv);
-					Node * commandNode = buildNode_Type(checkAliasArgs);
-
-					int foundAlias = 0;
-					foundAlias = findInList(aliasList, commandNode, compareAlias);
-
-					if (foundAlias == 1) {
-						checkAliasArgs = (alias *) commandNode->data;
-
-						//clean our makeargs
-						//clean(argc, argv);
-
-						//and replace with new
-						argc = makeargs(checkAliasArgs->argv[1], &argv);
-
-					}
-
-					//free memory used to check for alias
-					free(commandNode->data);
-					commandNode->data = NULL;
-
-					free(commandNode);
-					commandNode = NULL;
-				}
-
-				int result = execvp(argv[0], argv);
-
-				//deal with bad result from exec
-				if (result == -1) {
-					exit(-1);
-				}
+				/****************
+				 * SETUP REDIRECTION
+				 ****************/
+				exit(0);
 			}
 
-			//clean our makeargs
-			clean(argc, argv);
+			//free my command string
+			free(command);
+			command = NULL;
 		}
-
-		//printList(historyList, printHistoryType);
 
 		printf("command?: ");
 	  	fgets(s, MAX, stdin);
@@ -269,21 +258,16 @@ int main()
 		//create temp file to write to
 		tempFile = fopen("/home/shuckins/temp", "w");
 
-		//determine if we need to skip some historylist entries (that were already in list)
-		int skipListEntries = linesfromhistory;
-		if (historyList->size == histcount)
-			skipListEntries = skipListEntries - historyentriesadded;
-		if (skipListEntries < 0)
-			skipListEntries = 0;
-
 		//figure out how many lines in history we need to skip and skip those
-		int totalHistory = (histfilelines + historyList->size - skipListEntries) - histcount;
-		int skip = totalHistory - histfilecount;
-		if (skip < 0)
-			skip = 0;
+		if (historyentriesadded > histcount)
+			historyentriesadded = histcount;
+		int totalHistory = (originalHistLength + historyentriesadded);
+		int originalHistLinesToSkip = totalHistory - histfilecount;
+		if (originalHistLinesToSkip < 0)
+			originalHistLinesToSkip = 0;
 
-		int w;
-		for (w = 0; w < skip; w++) {
+		int x;
+		for (x = 0; x < originalHistLinesToSkip ; x++) {
 			fgets(s, MAX, fp);
 		}
 
@@ -295,9 +279,14 @@ int main()
 			fgets(s, MAX, fp);
 		}
 
-		//skip over history list entries that would be duplicates
-		int y;
-		for (y = 0; y < skipListEntries; y++) {
+		//determine if we need to skip some historylist entries (that were already in list)
+		int skipListEntries;
+		if (historyentriesadded == histcount)
+			skipListEntries = 0;
+		else
+			skipListEntries = historyList->size - (historyentriesadded - (histcount - linesFromOriginalHist));
+
+		for (x = 0; x < skipListEntries; x++) {
 			removeFirst(historyList, cleanTypeHistory);
 		}
 

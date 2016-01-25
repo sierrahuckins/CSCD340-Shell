@@ -1,6 +1,6 @@
 #include "redirect.h"
 
-int redirectIn(char *s, char *** argv){
+int redirectIn(char *s, char *** argv, int * inFD){
 	if (s == NULL) {
 		exit(-1);
 	}
@@ -32,9 +32,9 @@ int redirectIn(char *s, char *** argv){
 		strcpy(newIn, tempStrTok);
 
 		//redirect stdin using newIn
-		int fd = open(newIn, O_CREAT|O_APPEND|O_RDONLY, 0777);
+		*(inFD) = open(newIn, O_CREAT|O_APPEND|O_RDONLY, 0777);
 		close(0);
-		dup(fd);
+		dup(*(inFD));
 
 		//check if contains a redirect
 		int argc = makeargs(tempStr, argv);
@@ -51,7 +51,7 @@ int redirectIn(char *s, char *** argv){
 	}
 }
 
-int redirectOut(char *s, char *** argv){
+int redirectOut(char *s, char *** argv, int * outFD){
 	if (s == NULL) {
 		exit(-1);
 	}
@@ -83,9 +83,9 @@ int redirectOut(char *s, char *** argv){
 		strcpy(newOut, tempStrTok);
 
 		//redirect stdout using newIn
-		int fd = open(newOut, O_CREAT|O_APPEND|O_WRONLY, 0777);
+		*(outFD) = open(newOut, O_CREAT|O_APPEND|O_WRONLY, 0777);
 		close(1);
-		dup(fd);
+		dup(*(outFD));
 
 		//check if contains a redirect
 		int argc = makeargs(tempStr, argv);

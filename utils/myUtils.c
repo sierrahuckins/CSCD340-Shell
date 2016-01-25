@@ -1,58 +1,42 @@
 #include "myUtils.h"
 
-void strip(char *array)
-{
-	if(array == NULL)
-	{
-		perror("array is null");
-		exit(-99);
-	}// end if
+void strip(char *array) {
+    if (array == NULL) {
+        perror("array is null");
+        exit(-99);
+    }// end if
 
-	int len = strlen(array), x = 0;
-   
-	while(array[x] != '\0' && x < len)
-	{
-	  if(array[x] == '\r')
-		 array[x] = '\0';
+    int len = strlen(array), x = 0;
 
-	  else if(array[x] == '\n')
-		 array[x] = '\0';
+    while (array[x] != '\0' && x < len) {
+        if (array[x] == '\r')
+            array[x] = '\0';
 
-	  x++;
+        else if (array[x] == '\n')
+            array[x] = '\0';
 
-}// end while
-   
-}// end strip
+        x++;
+    }// end while
+}
 
-int menu()
-{
-   char temp[MAX];
-   int choice;
-   printf("1) Print the list\n");
-   printf("2) Add First\n");
-   printf("3) Add Last\n");
-   printf("4) Sort\n");
-   printf("5) Remove Item\n"); 
-   printf("6) Quit\n"); 
-   printf("Choice --> ");
-   fgets(temp, MAX, stdin);
-   choice = atoi(temp);
+void checkForAlias(char * s, char ** command, LinkedList * aliasList) {
+    Node * curr = aliasList->head->next;
 
-   
-   while(choice < 1 || choice > 6)
-   {
-      printf("1) Print the list\n");
-      printf("2) Add First\n");
-      printf("3) Add Last\n");
-      printf("4) Sort\n");
-      printf("5) Remove Item\n"); 
-      printf("6) Quit\n"); 
-      printf("Choice --> ");
-      fgets(temp, MAX, stdin);
-      choice = atoi(temp);
-   
-   }// end while
+    while (curr != NULL) {
+        alias * currAlias = curr->data;
 
-   return choice;
-   
-}// end menu
+        if (strcmp(s, currAlias->argv[0]) == 0) {
+            *command = (char *)calloc(strlen(currAlias->argv[1]) + 1, sizeof(char));
+
+            strcpy(*command, currAlias->argv[1]);
+            break;
+        }
+
+        curr = curr->next;
+    }
+
+}
+
+void checkForRedirection(char * s, char ** command) {
+
+}
