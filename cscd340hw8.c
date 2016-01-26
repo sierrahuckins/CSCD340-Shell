@@ -125,7 +125,7 @@ int main()
 	//close .mssh_history
 	fclose(fp);
 
-	printList(historyList, printHistoryType, 0);
+	//printList(historyList, printHistoryType, 0);
 
 	//request command from user
   	printf("command?: ");
@@ -145,7 +145,7 @@ int main()
 		if(historyList->size == 0 || compareHistory(currentArgs, lastHistory->data) != 0) {
 			addLast(historyList, buildNode_Type(currentArgs));
 			incrementHistoryCount();
-			printList(historyList, printHistoryType, (historyList->size - histcount));
+			//printList(historyList, printHistoryType, (historyList->size - histcount));
 		}
 		else {
 			//clean up the makehistoryargs call
@@ -211,42 +211,62 @@ int main()
 					redirectOut(outRedirect);
 
 				/****************
-				 * HANDLE COMMAND
+				 * HANDLE COMMANDS WITH NEW PROGRAMS
 				 ****************/
+
+				//normal execution
+				/*if (pathSet == TRUE) {
+					res = execl(path, argv[0], argv);
+				}
+				else {*/
+					res = execvp(argv[0], argv);
+				//}
+
+				//deal with bad result from exec
+				if (res == -1)
+					exit(-1);
+			}
+			else {
+				//will wait for child to return
+				waitpid(pid, &status, 0);
+
+				/****************
+				 * HANDLE INTERNAL COMMANDS
+				 ****************/
+
 				//special case: alias
 				if (strcmp(argv[0], "alias") == 0) {
-					//free make args
-					clean(argc, argv);
-					argv = NULL;
-
 					//make new alias style args
 					argc = makealiasargs(s, &argv);
 
 					//add to alias list
 					addLast(aliasList, buildNode_Type(buildAliasType_Args(argv)));
+
+					printList(aliasList, printAliasType, 0);
 				}
-					//special case: unalias
-				else if (strcmp(argv[0], "unalias") == 0) {
+				//special case: unalias
+				if (strcmp(argv[0], "unalias") == 0) {
 					checkForAliasToRemove(argv[1], aliasList);
+					printList(aliasList, printAliasType, 0);
 				}
-					//special case:cd
-				else if (strcmp(argv[0], "cd") == 0) {
-					//still need to figure this one out!!
+				//special case:cd
+				if (strcmp(argv[0], "cd") == 0) {
+					chdir(argv[1]);
+
 				}
-					//special case: history
-				else if (strcmp(argv[0], "history") == 0) {
+				//special case: history
+				if (strcmp(argv[0], "history") == 0) {
 					printList(historyList, printHistoryType, (historyList->size - histcount));
-					exit(0);
 				}
-					//special case: exclamation points
-				else if (*(argv[0] + 1) == '!') {
-					if (*(argv[0] + 2) == '!') {
+				//special case: exclamation points
+				if (*(argv[0]) == '!') {
+					if (*(argv[0] + 1) == '!') {
 						//get last history
 						Node * lastHistory= retrieveLast(historyList);
 						history * lastCommand = lastHistory->data;
 
 						if (pathSet == TRUE) {
-							res =execlp(path, lastCommand->argv);
+							res = execl(path, lastCommand->argv[0], lastCommand->argv);
 						}
 						else {
 							res =execvp(lastCommand->argv[0], lastCommand->argv);
@@ -257,7 +277,7 @@ int main()
 						//still need to figure this one out!!
 					}
 				}
-					//special case: setting path
+				//special case: setting path
 				else if (strstr(argv[0], "PATH=$PATH") == argv[0]) {
 					//PATH=$PATH\:/dir/path
 					//save pointer for strtok_r
@@ -297,26 +317,7 @@ int main()
 						//set path flag
 						pathSet = TRUE;
 					}
-					exit(0);
 				}
-				//normal execution
-				else {
-					if (pathSet == TRUE) {
-						res = execlp(path, argv);
-					}
-					else {
-						res = execvp(argv[0], argv);
-					}
-				}
-
-				//deal with bad result from exec
-				if (res == -1) {
-					exit(-1);
-				}
-			}
-				//child will execute command
-			else {
-				waitpid(pid, &status, 0);
 			}
 
 			//free my command string
