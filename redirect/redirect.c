@@ -10,6 +10,5 @@ void redirectIn(char * newInPath){
 void redirectOut(char * newOutPath) {
 	//redirect stdout using newOut
 	int fd = open(newOutPath, O_CREAT | O_APPEND | O_WRONLY, 0777);
-	close(1);
-	dup(fd);
+	dup2(fd, 1);
 }

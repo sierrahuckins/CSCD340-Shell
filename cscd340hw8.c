@@ -31,7 +31,7 @@ int main()
 	alias * checkAliasArgs = NULL;
 
 	//check if .msshrc exists and setup variables if it does
-	fp = fopen("/home/shuckins/.msshrc", "r");
+	fp = fopen(".msshrc", "r");
 
 	if (fp != NULL) {
 		//get histcount from file
@@ -103,7 +103,7 @@ int main()
 	strcpy(s, "");
 
 	//check if .mssh_history exists
-	fp = fopen("/home/shuckins/.mssh_history", "r");
+	fp = fopen(".mssh_history", "r");
 
 	if (fp != NULL) {
 		//find out how many lines are in history
@@ -118,7 +118,7 @@ int main()
 	}
 	//else if it doesn't exist, create it
 	else {
-		fp = fopen("/home/shuckins/.mssh_history", "w");
+		fp = fopen(".mssh_history", "w");
 	}
 
 	//close .mssh_history
@@ -162,8 +162,8 @@ int main()
 			splitForPipe(s, &leftPipe, &rightPipe);
 
 			//check for aliases
-			checkForAlias(leftPipe, &leftPipe, aliasList);
-			checkForAlias(rightPipe, &rightPipe, aliasList);
+			checkForAlias(&leftPipe, aliasList);
+			checkForAlias(&rightPipe, aliasList);
 
 			/****************
 			 * PIPEIT WILL GO HERE
@@ -179,15 +179,15 @@ int main()
 		 * HANDLE SINGLE COMMAND
 		 ****************/
 		else {
-			char * command;
-			char * inRedirect = NULL;
-			char * outRedirect = NULL;
+			char *command;
+			char *inRedirect = NULL;
+			char *outRedirect = NULL;
 
 			//check for redirections
 			checkForRedirection(s, &command, &inRedirect, &outRedirect);
 
 			//check for alias
-			checkForAlias(s, &command, aliasList);
+			checkForAlias(&command, aliasList);
 
 			//makeargs for command
 			argc = makeargs(command, &argv);
@@ -200,11 +200,7 @@ int main()
 			pid = fork();
 
 			//parent will wait so it can return to original program
-			if(pid != 0) {
-				waitpid(pid, &status, 0);
-			}
-			//child will execute command
-			else {
+			if (pid == 0) {
 				/****************
 				 * SETUP REDIRECTION
 				 ****************/
@@ -218,21 +214,29 @@ int main()
 				 ****************/
 				//special case: alias
 				if (strcmp(argv[0], "alias") == 0) {
+					//free make args
+					clean(argc, argv);
+					argv = NULL;
+
+					//make new alias style args
+					argc = makealiasargs(s, &argv);
+
+					//add to alias list
 					addLast(aliasList, buildNode_Type(buildAliasType_Args(argv)));
 				}
-				//special case: unalias
+					//special case: unalias
 				else if (strcmp(argv[0], "unalias") == 0) {
 					checkForAliasToRemove(argv[1], aliasList);
 				}
-				//special case:cd
+					//special case:cd
 				else if (strcmp(argv[0], "cd") == 0) {
 					//still need to figure this one out!!
 				}
-				//special case: history
+					//special case: history
 				else if (strcmp(argv[0], "history") == 0) {
 					printList(historyList, printHistoryType, (historyList->size - histcount));
 				}
-				//special case: exclamation points
+					//special case: exclamation points
 				else if (*(argv[0] + 1) == '!') {
 					if (*(argv[0] + 2) == '!') {
 						//still need to figure this one out!!
@@ -241,25 +245,43 @@ int main()
 						//still need to figure this one out!!
 					}
 				}
-				//special case: setting path
+					//special case: setting path
 				else if (strcmp(argv[0], "path") == 0) {
 					//think this might be PATH???
 					//figure this one out!
 				}
-				//normal execution
+					//normal execution
 				else {
-					if (pathSet == TRUE) {
+					/*if (pathSet == TRUE) {
 						execlp(path, argv[0], argv);
 					}
-					else {
-						execvp(argv[0], argv);
-					}
+					else {*/
+					execvp(argv[0], argv);
+					//}
 				}
+			}
+				//child will execute command
+			else {
+				waitpid(pid, &status, 0);
 			}
 
 			//free my command string
 			free(command);
 			command = NULL;
+
+			//free make args
+			clean(argc, argv);
+			argv = NULL;
+
+			//free redirect paths if necessary
+			if (inRedirect != NULL) {
+				free(inRedirect);
+				inRedirect = NULL;
+			}
+			if (outRedirect != NULL){
+				free(outRedirect);
+				outRedirect = NULL;
+			}
 		}
 
 		printf("command?: ");
@@ -269,7 +291,7 @@ int main()
   	}// end while
 
 	//write out to .msshrc_history
-	fp = fopen("/home/shuckins/.mssh_history", "r");
+	fp = fopen(".mssh_history", "w");
 
 	if (fp != NULL) {
 		int skip = historyList->size - histfilecount;
@@ -287,11 +309,11 @@ int main()
 
 			int z;
 			for (z = 0; z < listing->argc; z++) {
-				fputs(listing->argv[z], tempFile);
-				fputs(" ", tempFile);
+				fputs(listing->argv[z], fp);
+				fputs(" ", fp);
 			}
 
-			fputs("\n", tempFile);
+			fputs("\n", fp);
 			removeFirst(historyList, cleanTypeHistory);
 		}
 
