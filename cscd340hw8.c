@@ -3,6 +3,8 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/wait.h>
+#include <unistd.h>
+
 
 #include "./utils/myUtils.h"
 #include "./utils/msshrcUtils.h"
@@ -14,7 +16,7 @@
 #include "./tokenize/makeArgs.h"
 #include "./redirect/redirect.h"
 
-#define MAX 100
+#define MAX 500
 #define TRUE 1
 #define FALSE 0
 
@@ -54,6 +56,9 @@ int main()
 
 			argc = makealiasargs(s, &argv);
 
+			/****************
+			 * SET ALIASES
+			 ****************/
 			while (strcmp(argv[0], "PATH") != 0 && !feof(fp)) {
 				addLast(aliasList, buildNode_Type(buildAliasType_Args(argv)));
 
@@ -69,21 +74,30 @@ int main()
 				}
 			}
 
-			//set path variable
+			/****************
+			 * SET PATH VARIABLE
+			 ****************/
 			if (!feof(fp)) {
 				//save pointer for strtok_r
 				char * save;
 
-				path = (char *) calloc(strlen(argv[1]) + 1 - 6, sizeof(char));
-
-				//we need to remove the front part
 				char * truncatedStrTok = strtok_r(argv[1], ":", &save);
 
-				//copy to path variables
-				strcpy(path, save);
+				if (strstr(truncatedStrTok, "$PATH") != NULL) {
+					char * envPath = getenv("PATH");
+					strip(save);
+					path = (char *) calloc(strlen(envPath) + strlen(save) + 2, sizeof(char));
+					strcpy(path, envPath);
+					strcat(path, ":");
+					strcat(path,save);
+				}
+				else {
+					strip(save);
+					path = (char *) calloc(strlen(save) + 1, sizeof(char));
+					strcat(path,save);
+				}
 
-				//set path flag
-				pathSet = TRUE;
+				setenv("PATH", path, 1);
 
 				//clean up the makealiasargs call
 				cleanTypeAlias(buildAliasType_Args(argv));
@@ -103,7 +117,9 @@ int main()
 
 	strcpy(s, "");
 
-	//check if .mssh_history exists
+	/****************
+	 * SETUP HISTORY
+	 ****************/
 	fp = fopen(".mssh_history", "r");
 
 	if (fp != NULL) {
@@ -213,18 +229,48 @@ int main()
 				/****************
 				 * HANDLE COMMANDS WITH NEW PROGRAMS
 				 ****************/
+				//special case: exclamation points
+				if (*(argv[0]) == '!') {
+					if (*(argv[0] + 1) == '!') {
+						//get last history
+						Node *lastHistory = retrieveLast(historyList);
+						history *lastCommand = lastHistory->data;
 
-				//normal execution
-				/*if (pathSet == TRUE) {
-					res = execl(path, argv[0], argv);
+						/*if (pathSet == TRUE) {
+							res = execl(path, lastCommand->argv);
+						}
+						else {
+							res = execvp(lastCommand->argv[0], lastCommand->argv);
+						}*/
+					}
+					else {
+						//still need to figure this one out!!
+					}
 				}
-				else {*/
-					res = execvp(argv[0], argv);
-				//}
+				//normal execution
+				else {
+					if (pathSet == TRUE) {
+						printf("Executing with path = \"%s\".\n", path);
+						char  pathenv[strlen(path) + strlen(argv[0]) + 1];
+						strcpy(pathenv, path);
+						strcat(pathenv, "/");
+						strcat(pathenv, argv[0]);
+						//char *envp[] = {pathenv, NULL};
+						//char *env[] = {path, NULL};
+
+						//res = execve(argv[0], argv, envp);
+						res = execv(pathenv, argv);
+					}
+					else {
+						res = execvp(argv[0], argv);
+					}
+				}
 
 				//deal with bad result from exec
-				if (res == -1)
+				if (res == -1) {
+					printf("Child didn't execute correctly.\n");
 					exit(-1);
+				}
 			}
 			else {
 				//will wait for child to return
@@ -257,25 +303,6 @@ int main()
 				//special case: history
 				if (strcmp(argv[0], "history") == 0) {
 					printList(historyList, printHistoryType, (historyList->size - histcount));
-				}
-				//special case: exclamation points
-				if (*(argv[0]) == '!') {
-					if (*(argv[0] + 1) == '!') {
-						//get last history
-						Node * lastHistory= retrieveLast(historyList);
-						history * lastCommand = lastHistory->data;
-
-						if (pathSet == TRUE) {
-							res = execl(path, lastCommand->argv[0], lastCommand->argv);
-						}
-						else {
-							res =execvp(lastCommand->argv[0], lastCommand->argv);
-						}
-						exit(0);
-					}
-					else {
-						//still need to figure this one out!!
-					}
 				}
 				//special case: setting path
 				else if (strstr(argv[0], "PATH=$PATH") == argv[0]) {

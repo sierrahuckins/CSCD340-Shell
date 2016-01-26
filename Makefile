@@ -3,7 +3,7 @@ CC=gcc
 lab8:	./history/history.o ./linkedlist/linkedList.o ./linkedlist/listUtils.o ./utils/myUtils.o ./alias/alias.o ./utils/msshrcUtils.o ./pipes/pipes.o ./redirect/redirect.o ./tokenize/makeArgs.o
 	gcc -g -o lab8 cscd340hw8.c ./history/history.o ./linkedlist/linkedList.o ./linkedlist/listUtils.o ./utils/myUtils.o ./alias/alias.o ./utils/msshrcUtils.o ./pipes/pipes.o ./redirect/redirect.o ./tokenize/makeArgs.o
 
-linkedList.o:	./linkedlist/linkedList.h ./linkedlist/linkedList.c 
+linkedList.o:	./linkedlist/linkedList.c ./linkedlist/linkedList.h
 	gcc -g -c ./linkedlist/linkedList.c
 
 listUtils.o:	./linkedlist/listUtils.c ./linkedlist/listUtils.h
@@ -15,7 +15,7 @@ myUtils.o:	./utils/myUtils.c ./utils/myUtils.h
 msshrcUtils.o:	./utils/msshrcUtils.c ./utils/msshrcUtils.h
 	gcc -g -c ./utils/msshrcUtils.c
 
-history.o:	./history/history.c
+history.o:	./history/history.c ./history/history.h
 	gcc -g -c ./history/history.c
 
 alias.o:	./alias/alias.c ./alias/alias.h

@@ -21,9 +21,6 @@
 
 #include "linkedList.h"
 
-#define MAX 100
-
-
 /**
  * @brief Builds a node that contains a pointer to the specific data type.
  *

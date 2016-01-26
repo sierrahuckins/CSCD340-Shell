@@ -9,8 +9,6 @@
 #include "../linkedlist/linkedList.h"
 #include "../redirect/redirect.h"
 
-#define MAX 100
-
 void strip(char *array);
 void checkForAlias(char ** command, LinkedList * aliasList);
 void checkForRedirection(char * s, char ** command, char ** redirectInPath, char ** redirectOutPath);

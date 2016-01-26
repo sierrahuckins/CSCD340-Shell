@@ -6,9 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-#define MAX 100
-
 struct hist
 {
     int argc;
