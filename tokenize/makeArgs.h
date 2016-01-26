@@ -7,6 +7,8 @@
 #include <string.h>
 #include "../utils/myUtils.h"
 
+#define MAX 500
+
 void clean(int argc, char **argv);
 void printargs(int argc, char **argv);
 int makeargs(char *s, char *** argv);

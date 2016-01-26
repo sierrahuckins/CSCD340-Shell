@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <linux/limits.h>
 
 
 #include "./utils/myUtils.h"
@@ -98,14 +99,11 @@ int main()
 				}
 
 				setenv("PATH", path, 1);
-
 				//clean up the makealiasargs call
 				cleanTypeAlias(buildAliasType_Args(argv));
 			}
 		}
 
-		//close .msshrc
-		fclose(fp);
 	}
 	else {
 		//printf("Error opening file: %s.\n", strerror(errno));
@@ -236,12 +234,7 @@ int main()
 						Node *lastHistory = retrieveLast(historyList);
 						history *lastCommand = lastHistory->data;
 
-						/*if (pathSet == TRUE) {
-							res = execl(path, lastCommand->argv);
-						}
-						else {
-							res = execvp(lastCommand->argv[0], lastCommand->argv);
-						}*/
+						res = execvp(lastCommand->argv[0], lastCommand->argv);
 					}
 					else {
 						//still need to figure this one out!!
@@ -249,26 +242,12 @@ int main()
 				}
 				//normal execution
 				else {
-					if (pathSet == TRUE) {
-						printf("Executing with path = \"%s\".\n", path);
-						char  pathenv[strlen(path) + strlen(argv[0]) + 1];
-						strcpy(pathenv, path);
-						strcat(pathenv, "/");
-						strcat(pathenv, argv[0]);
-						//char *envp[] = {pathenv, NULL};
-						//char *env[] = {path, NULL};
-
-						//res = execve(argv[0], argv, envp);
-						res = execv(pathenv, argv);
-					}
-					else {
-						res = execvp(argv[0], argv);
-					}
+					res = execvp(argv[0], argv);
 				}
 
 				//deal with bad result from exec
 				if (res == -1) {
-					printf("Child didn't execute correctly.\n");
+					//printf("Child didn't execute correctly.\n");
 					exit(-1);
 				}
 			}
@@ -305,45 +284,45 @@ int main()
 					printList(historyList, printHistoryType, (historyList->size - histcount));
 				}
 				//special case: setting path
-				else if (strstr(argv[0], "PATH=$PATH") == argv[0]) {
-					//PATH=$PATH\:/dir/path
+				else if (strstr(argv[0], "PATH") == argv[0]) {
+					//free old path
+					free(path);
+					path = NULL;
+
 					//save pointer for strtok_r
 					char * save;
 
-					if (pathSet == TRUE) {
-						char * newpath = (char *) calloc(strlen(argv[0]) + 1 - 6 + strlen(path) + 1, sizeof(char));
+					//clear front of command (path=) away
+					char * truncatedStrTok = strtok_r(argv[0], "=", &save);
 
-						//we need to remove the front part
-						char * truncatedStrTok = strtok_r(argv[0], ":", &save);
+					truncatedStrTok = strtok_r(NULL, ":", &save);
 
-						//copy to path variables
-						strcpy(newpath, path);
-						strcat(newpath, ":");
-						strcat(newpath, truncatedStrTok);
+					char newPath[PATH_MAX];
+					strcpy(newPath, "");
 
-						//free old path
-						free(path);
-						path = NULL;
+					int x = 0;
+					while (truncatedStrTok != NULL) {
+						if (x != 0) {
+							strcat(newPath, ":");
+							x++;
+						}
+						strip(save);
 
-						//calloc new memory and copy into it
-						path = (char *) calloc(strlen(newpath), sizeof(char));
-						strcpy(path, newpath);
+						if (strcmp(truncatedStrTok, "$PATH") == 0) {
+							char *envPath = getenv("PATH");
+							strcat(newPath, envPath);
+						}
+						else {
+							strcat(newPath, truncatedStrTok);
+						}
 
-						//free newpath memory
-						free(newpath);
-						newpath = NULL;
+
+						truncatedStrTok = strtok_r(NULL, ":", &save);
 					}
-					else {
-						//we need to remove the front part
-						char * truncatedStrTok = strtok_r(argv[0], ":", &save);
 
-						//calloc new memory and copy into it
-						path = (char *) calloc(strlen(argv[0]) + 1 - 6 + strlen(path) + 1, sizeof(char));
-						strcpy(path, save);
-
-						//set path flag
-						pathSet = TRUE;
-					}
+					path = (char *)calloc(strlen(newPath) + 1, sizeof(char));
+					strcpy(path, newPath);
+					setenv("PATH", path, 1);
 				}
 			}
 
@@ -373,8 +352,6 @@ int main()
   	}// end while
 
 	//write out to .msshrc_history
-	fp = fopen(".mssh_history", "w");
-
 	if (fp != NULL) {
 		int skip = historyList->size - histfilecount;
 		if (skip < 0)
