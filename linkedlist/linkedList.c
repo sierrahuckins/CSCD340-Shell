@@ -257,7 +257,6 @@ void clearList(LinkedList * theList, void (*removeData)(void *)) {
 	else {
 		Node * curr = theList->head->next;
 		Node * temp;
-		void * dataToDelete;
 
 		while (curr != NULL) {
 			temp = curr;
@@ -287,15 +286,23 @@ void clearList(LinkedList * theList, void (*removeData)(void *)) {
  *
  * @warning - The passed in LinkedList * theList is checked - if NULL "Empty List" is printed
  */
-void printList(const LinkedList * theList, void (*convertData)(void *)) {
+void printList(const LinkedList * theList, void (*convertData)(void *), int start) {
 	//check if passed in list is null
 	if (theList == NULL)
 		printf("Empty List");
-
 	//passed preconditions, continue with function
 	else {
+		if (start < 0)
+			start = 0;
+
 		Node * curr = theList->head->next;
 
+		//skip lines if we're not printing whole list
+		int x;
+		for (x = 0; x < start; x++)
+			curr = curr->next;
+
+		//begin printing list
 		while (curr != NULL) {
 			convertData(curr->data);
 			curr = curr->next;

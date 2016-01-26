@@ -92,7 +92,7 @@ void splitForPipe(char * s, char ** leftPipe, char ** rightPipe) {
 
 char ** parsePrePipe(char *s, int * preCount) {
 	char ** argv;
-	
+
 	if (s == NULL) {
 		exit(-1);
 	}
@@ -116,17 +116,8 @@ char ** parsePrePipe(char *s, int * preCount) {
 		//strcpy into dynamically allocated memory
 		strcpy(tempStr, tempStrTok);
 
-		//check if contains a redirect
-		if (strstr(tempStr, "<") != NULL) {
-			*preCount = redirectIn(tempStr, &argv, &inFD);
-		}
-		else if (strstr(tempStr, ">") != NULL) {
-			*preCount = redirectOut(tempStr, &argv, &outFD);
-		}
-			//else call makeargs with only poststring
-		else {
-			*preCount = makeargs(tempStr, &argv);
-		}
+		//call makeargs with only prestring
+		*preCount = makeargs(tempStr, &argv);
 
 		//print result to screen
 		printf("The prePipe string is: ");
@@ -144,7 +135,7 @@ char ** parsePrePipe(char *s, int * preCount) {
 
 char ** parsePostPipe(char *s, int * postCount){
 	char ** argv;
-	
+
 	if (s == NULL) {
 		exit(-1);
 	}
@@ -171,17 +162,8 @@ char ** parsePostPipe(char *s, int * postCount){
 		//strcpy into dynamically allocated memory
 		strcpy(tempStr, tempStrTok);
 
-		//check if contains a redirect
-		if (strstr(tempStr, "<") != NULL) {
-			*postCount = redirectIn(tempStr, &argv, &inFD);
-		}
-		else if (strstr(tempStr, ">") != NULL) {
-			*postCount = redirectOut(tempStr, &argv, &outFD);
-		}
-		//else call makeargs with only poststring
-		else {
-			*postCount = makeargs(tempStr, &argv);
-		}
+		//call makeargs with only poststring
+		*postCount = makeargs(tempStr, &argv);
 
 		//print result to screen
 		printf("The postPipe string is: ");
@@ -191,7 +173,7 @@ char ** parsePostPipe(char *s, int * postCount){
 		free(newStr);
 		newStr = NULL;
 		free(tempStr);
-		newStr = NULL;
+		tempStr = NULL;
 
 		return argv;
 	}

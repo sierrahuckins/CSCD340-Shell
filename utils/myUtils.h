@@ -11,7 +11,7 @@
 
 void strip(char *array);
 void checkForAlias(char * s, char ** command, LinkedList * aliasList);
-void checkForRedirection(char * s, char ** command);
+void checkForRedirection(char * s, char ** command, char ** redirectInPath, char ** redirectOutPath);
 void checkForAliasToRemove(char * s, LinkedList * aliasList);
 
 #endif
