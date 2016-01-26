@@ -169,6 +169,12 @@ void checkForRedirection(char * s, char ** command, char ** redirectInPath, char
             *redirectOutPath = (char *) calloc(strlen(tempStrTok) + 1, sizeof(char));
             strcpy(*redirectOutPath, tempStrTok);
         }
+        //else no redirects
+        else {
+            //dynamically allocate new memory
+            *command = (char *) calloc(strlen(s) + 1, sizeof(char));
+            strcpy(*command, s);
+        }
 
         //free dynamically allocated memory
         free(newStr);

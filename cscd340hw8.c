@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <sys/wait.h>
 
 #include "./utils/myUtils.h"
 #include "./utils/msshrcUtils.h"
@@ -235,29 +236,82 @@ int main()
 					//special case: history
 				else if (strcmp(argv[0], "history") == 0) {
 					printList(historyList, printHistoryType, (historyList->size - histcount));
+					exit(0);
 				}
 					//special case: exclamation points
 				else if (*(argv[0] + 1) == '!') {
 					if (*(argv[0] + 2) == '!') {
-						//still need to figure this one out!!
+						//get last history
+						Node * lastHistory= retrieveLast(historyList);
+						history * lastCommand = lastHistory->data;
+
+						if (pathSet == TRUE) {
+							res =execlp(path, lastCommand->argv);
+						}
+						else {
+							res =execvp(lastCommand->argv[0], lastCommand->argv);
+						}
+						exit(0);
 					}
 					else {
 						//still need to figure this one out!!
 					}
 				}
 					//special case: setting path
-				else if (strcmp(argv[0], "path") == 0) {
-					//think this might be PATH???
-					//figure this one out!
-				}
-					//normal execution
-				else {
-					/*if (pathSet == TRUE) {
-						execlp(path, argv[0], argv);
+				else if (strstr(argv[0], "PATH=$PATH") == argv[0]) {
+					//PATH=$PATH\:/dir/path
+					//save pointer for strtok_r
+					char * save;
+
+					if (pathSet == TRUE) {
+						char * newpath = (char *) calloc(strlen(argv[0]) + 1 - 6 + strlen(path) + 1, sizeof(char));
+
+						//we need to remove the front part
+						char * truncatedStrTok = strtok_r(argv[0], ":", &save);
+
+						//copy to path variables
+						strcpy(newpath, path);
+						strcat(newpath, ":");
+						strcat(newpath, truncatedStrTok);
+
+						//free old path
+						free(path);
+						path = NULL;
+
+						//calloc new memory and copy into it
+						path = (char *) calloc(strlen(newpath), sizeof(char));
+						strcpy(path, newpath);
+
+						//free newpath memory
+						free(newpath);
+						newpath = NULL;
 					}
-					else {*/
-					execvp(argv[0], argv);
-					//}
+					else {
+						//we need to remove the front part
+						char * truncatedStrTok = strtok_r(argv[0], ":", &save);
+
+						//calloc new memory and copy into it
+						path = (char *) calloc(strlen(argv[0]) + 1 - 6 + strlen(path) + 1, sizeof(char));
+						strcpy(path, save);
+
+						//set path flag
+						pathSet = TRUE;
+					}
+					exit(0);
+				}
+				//normal execution
+				else {
+					if (pathSet == TRUE) {
+						res = execlp(path, argv);
+					}
+					else {
+						res = execvp(argv[0], argv);
+					}
+				}
+
+				//deal with bad result from exec
+				if (res == -1) {
+					exit(-1);
 				}
 			}
 				//child will execute command
