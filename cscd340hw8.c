@@ -35,17 +35,22 @@ int main()
 	alias * checkAliasArgs = NULL;
 	char * startingDir;
 	char tempPath[PATH_MAX];
+	char *inRedirect = NULL;
+	char *outRedirect = NULL;
 
 	/****************
 	 * HANDLE .MSSHRC
 	 ****************/
+
 	fp = fopen(".msshrc", "r");
 	startingDir=getcwd(tempPath, PATH_MAX);
 
 	if (fp != NULL) {
+
 		/****************
 		 * GET HIST VARIABLES
 		 ****************/
+
 		//get histcount from file
 		histcount = getHistFileCount(fp, s);
 
@@ -55,6 +60,7 @@ int main()
 		/****************
 		 * GET ALIASES
 		 ****************/
+
 		fgets(s, MAX, fp);
 
 		//if the line that was just grabbed was empty, move forward a line
@@ -70,6 +76,7 @@ int main()
 			/****************
 			 * SET ALIASES
 			 ****************/
+
 			while (strcmp(argv[0], "PATH") != 0 && !feof(fp)) {
 				addLast(aliasList, buildNode_Type(buildAliasType_Args(argv)));
 
@@ -88,6 +95,7 @@ int main()
 			/****************
 			 * SET PATH VARIABLE
 			 ****************/
+
 			if (!feof(fp)) {
 				//save pointer for strtok_r
 				char * save;
@@ -131,6 +139,7 @@ int main()
 	/****************
 	 * SETUP HISTORY
 	 ****************/
+
 	fp = fopen(".mssh_history", "rw");
 
 	if (fp != NULL) {
@@ -161,9 +170,11 @@ int main()
 
 	//handle command if it wasn't exit
   	while(strcmp(s, "exit") != 0) {
+
 		/****************
 		 * HANDLE HISTORY
 		 ****************/
+
 		argc = makehistoryargs(s, &argv);
 		history * currentArgs = (history *)buildHistoryType_Args(argc, argv);
 		Node * lastHistory= retrieveNthLast(historyList, 0);
@@ -180,47 +191,218 @@ int main()
 		}
 
 		/****************
-		 * HANDLE PIPE
+		 * MAKE HISTORY SWITCHES
 		 ****************/
+
+		if (s[0] == '!') {
+			//get last history
+			Node *lastHistory;
+			int val;
+
+			if (s[1] == '!') {
+				lastHistory = retrieveNthLast(historyList, 1);
+			}
+			else {
+				char * p = s;
+				p++;
+				strcpy(s, p);
+				val = (int) strtol(s, &p, 10);
+
+				lastHistory = retrieveNth(historyList, val);
+			}
+
+			history *lastCommand = lastHistory->data;
+
+			strcpy(s, lastCommand->argv[0]);
+
+			int x;
+			for (x = 1; x < lastCommand->argc; x++) {
+				strcat(s, " ");
+				strcat(s, lastCommand->argv[x]);
+			}
+		}
+
+		/****************
+		 * HANDLE PATH COMMAND
+		 ****************/
+		if (strstr(s, "PATH=") == s) {
+			//free old path
+			free(path);
+			path = NULL;
+
+			char sCopy[PATH_MAX];
+			strcpy(sCopy, s);
+
+			//save pointer for strtok_r
+			char * save;
+
+			//clear front of command (path=) away
+			char * truncatedStrTok = strtok_r(sCopy, "=", &save);
+
+			truncatedStrTok = strtok_r(NULL, ":", &save);
+
+			char newPath[PATH_MAX];
+			strcpy(newPath, "");
+
+			int x = 0;
+			while (truncatedStrTok != NULL) {
+				if (x != 0) {
+					strcat(newPath, ":");
+					x++;
+				}
+				strip(save);
+
+				if (strcmp(truncatedStrTok, "$PATH") == 0) {
+					char *envPath = getenv("PATH");
+					strcat(newPath, envPath);
+				}
+				else {
+					strcat(newPath, truncatedStrTok);
+				}
+
+
+				truncatedStrTok = strtok_r(NULL, ":", &save);
+			}
+
+			path = (char *)calloc(strlen(newPath) + 1, sizeof(char));
+			strcpy(path, newPath);
+			setenv("PATH", path, 1);
+		}
+
+		/****************
+		 * DETERMINE IF PIPED
+		 ****************/
+
 		int pipes = containsPipe(s);
 
 		if (pipes > 0) {
 			//split into left and right strings
-			char * leftPipe, * rightPipe;
-			splitForPipe(s, &leftPipe, &rightPipe);
+			char * leftPipeString, * rightPipeString;
+			splitForPipe(s, &leftPipeString, &rightPipeString);
 
-			//check for aliases
-			checkForAlias(&leftPipe, aliasList);
-			checkForAlias(&rightPipe, aliasList);
+			/****************
+			 * PREFORK/PREARG SPECIAL CASES
+			 ****************/
+
+			//special case: redirection
+			checkForRedirection(leftPipeString, &leftPipeString, &inRedirect, &outRedirect);
+			checkForRedirection(rightPipeString, &rightPipeString, &inRedirect, &outRedirect);
+
+			//special case: is an alias
+			checkForAlias(&leftPipeString, aliasList);
+			checkForAlias(&rightPipeString, aliasList);
+
+			//special case: create alias
+			if (strstr(leftPipeString, "alias ") == leftPipeString) {
+				//make new alias style args
+				argc = makealiasargs(s, &argv);
+
+				//add to alias list
+				addLast(aliasList, buildNode_Type(buildAliasType_Args(argv)));
+
+				//printList(aliasList, printAliasType, 0);
+
+				argv = NULL;
+			}
+			if (strstr(rightPipeString, "alias ") == rightPipeString) {
+				//make new alias style args
+				argc = makealiasargs(s, &argv);
+
+				//add to alias list
+				addLast(aliasList, buildNode_Type(buildAliasType_Args(argv)));
+
+				//printList(aliasList, printAliasType, 0);
+
+				argv = NULL;
+			}
+
+			/*
+
+			//special case: unalias
+			if (strstr(leftPipe, "unalias ") == leftPipe) {
+				printf("Unaliasing not currently supported.");
+
+				make new alias style args
+				argc = makeargs(s, &argv);
+				char temp[MAX];
+				strcpy(temp, argv[1]);
+
+				clean(argc, argv);
+				argv = NULL;
+
+				argc = 2;
+				argv = (char **)calloc(3, sizeof(char *));
+				argv[0] = (char *) calloc(strlen(temp) + 1, sizeof(char));
+				strcpy(argv[0], temp);
+				argv[1] = (char *) calloc(strlen("TEST") + 1, sizeof(char));
+				strcpy(argv[0], "TEST\0");
+				argv[3] = '\0';
+
+				Node * removeNode = buildNode_Type(buildAliasType_Args(argv));
+
+				removeItem(aliasList, removeNode, cleanTypeAlias, compareAlias);
+				printList(aliasList, printAliasType, 0);
+
+				//clean up the makeargs call
+				argv = NULL;
+			}
+*/
+
+			/****************
+			 * MAKEARGS FOR EXECUTION
+			 ****************/
+
+			char ** leftPipe, ** rightPipe;
+			int leftCount = 0, rightCount = 0;
+			leftCount = makeargs(leftPipeString, &leftPipe);
+			rightCount = makeargs(rightPipeString, &rightPipe);
+
+			//special case:cd
+			if (strcmp(leftPipe[0], "cd") == 0) {
+				chdir(leftPipe[1]);
+			}
+			if (strcmp(rightPipe[0], "cd") == 0) {
+				chdir(rightPipe[1]);
+			}
 
 			/****************
 			 * PIPEIT WILL GO HERE
 			 ****************/
 
-			//free my pipe strings
-			free(leftPipe);
-			leftPipe = NULL;
-			free(rightPipe);
-			rightPipe = NULL;
+			pipeIt(leftPipe, rightPipe, &inRedirect, &outRedirect, historyList, histcount);
+
+			//free my pipe string
+			free(leftPipeString);
+			leftPipeString = NULL;
+			free(rightPipeString);
+			rightPipeString = NULL;
+			clean(leftCount, leftPipe);
+			clean(rightCount, rightPipe);
+
+			//free redirect paths if necessary
+			if (inRedirect != NULL) {
+				free(inRedirect);
+				inRedirect = NULL;
+			}
+			if (outRedirect != NULL){
+				free(outRedirect);
+				outRedirect = NULL;
+			}
+
 		}
 		/****************
 		 * HANDLE SINGLE COMMAND
 		 ****************/
+
 		else {
 			char *command;
-			char *inRedirect = NULL;
-			char *outRedirect = NULL;
 
 			/****************
 			 * PREFORK/PREARG SPECIAL CASES
 			 ****************/
 			//special case: redirection
 			checkForRedirection(s, &command, &inRedirect, &outRedirect);
-
-			//special case: exclamation points
-			if (*(command) == '!') {
-				checkExclamations(&command, historyList);
-			}
+			command = strstrip(command);
 
 			//special case: is an alias
 			checkForAlias(&command, aliasList);

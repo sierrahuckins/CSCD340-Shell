@@ -2,9 +2,8 @@
 
 void redirectIn(char * newInPath){
 	//redirect stdin using newIn
-	int fd = open(newInPath, O_CREAT | O_TRUNC | O_RDONLY, 0777);
-	close(0);
-	dup(fd);
+	int fd = open(newInPath, O_CREAT | O_RDONLY, 0777);
+	dup2(fd, 0);
 }
 
 void redirectOut(char * newOutPath) {

@@ -21,8 +21,11 @@ void strip(char *array) {
 }
 
 /****************************
- * Code copied from
- *http://lxr.free-electrons.com/source/lib/string.c?v=2.6.32#L348
+ * Code (as used by Linux Kernel) via
+ * http://lxr.free-electrons.com/source/lib/string.c?v=2.6.32#L348
+ *
+ * Removes leading and
+ * trailing whitespaces.
  ***************************/
 char *strstrip(char *s)
 {
@@ -120,6 +123,7 @@ void checkForRedirection(char * s, char ** command, char ** redirectInPath, char
         //copy string for tokenizing
         char * newStr = (char *) calloc(strlen(s) + 1, sizeof(char));
         strcpy(newStr, s);
+        s = strstrip(s);
         char * save = NULL;
 
         //both redirects are present

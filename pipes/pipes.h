@@ -15,7 +15,7 @@ int containsPipe(char *s);
 void splitForPipe(char * s, char ** leftPipe, char ** rightPipe);
 char ** parsePrePipe(char *s, int * preCount);
 char ** parsePostPipe(char *s, int * postCount);
-void pipeIt(char * s, LinkedList * aliasList);
+void pipeIt(char ** prePipe, char ** postPipe, char ** inRedirect, char ** outRedirect, LinkedList * historyList, int histcount);
 
 #endif 
 

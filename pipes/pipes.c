@@ -120,8 +120,8 @@ char ** parsePrePipe(char *s, int * preCount) {
 		*preCount = makeargs(tempStr, &argv);
 
 		//print result to screen
-		printf("The prePipe string is: ");
-		printargs(*preCount, argv);
+		//printf("The prePipe string is: ");
+		//printargs(*preCount, argv);
 
 		//free dynamically allocated memory
 		free(newStr);
@@ -166,8 +166,8 @@ char ** parsePostPipe(char *s, int * postCount){
 		*postCount = makeargs(tempStr, &argv);
 
 		//print result to screen
-		printf("The postPipe string is: ");
-		printargs(*postCount, argv);
+		//printf("The postPipe string is: ");
+		//printargs(*postCount, argv);
 
 		//free dynamically allocated memory
 		free(newStr);
@@ -179,24 +179,26 @@ char ** parsePostPipe(char *s, int * postCount){
 	}
 }
 
-void pipeIt(char * s, LinkedList * aliasList){
-	char ** argv;
-	int argc;
-	int preCount = 0, postCount = 0;
-	char ** prePipe,  ** postPipe;
-	alias * checkAliasArgs = NULL;
-
-	//////////////////////////////////
+void pipeIt(char ** prePipe, char ** postPipe, char ** inRedirect, char ** outRedirect, LinkedList * historyList, int histcount) {
 	pid_t pid;
 	int fd[2], res, status;
 
 	pid = fork();
-	
+
 	if(pid != 0) {
 		waitpid(pid, &status, 0);
 	}
-	
+
 	else {
+		/****************
+		 * SETUP REDIRECTION
+		 ****************/
+
+		if (*inRedirect != NULL)
+			redirectIn(*inRedirect);
+		if (*outRedirect != NULL)
+			redirectOut(*outRedirect);
+
 		res = pipe(fd);
 
 		if(res < 0)
@@ -209,32 +211,12 @@ void pipeIt(char * s, LinkedList * aliasList){
 
 		if(pid != 0)
 		{
-			//split off post pipe
-			postPipe = parsePostPipe(s, &postCount);
-			argv = postPipe;
-
-			//check if postPipe is an alias and update if necessary
-			if (postCount == 1) {
-				checkAliasArgs = (alias *)buildAliasType_Args(argv);
-				Node * postPipeNode = buildNode_Type(checkAliasArgs);
-
-				int foundAlias = 0;
-				foundAlias = findInList(aliasList, postPipeNode, compareAlias);
-
-				if (foundAlias == 1) {
-					checkAliasArgs = (alias *) postPipeNode->data;
-
-					//clean our makeargs
-					//clean(argc, argv);
-
-					//and replace with new
-					argc = makeargs(checkAliasArgs->argv[1], &argv);
-				}
-				free(postPipeNode->data);
-				postPipeNode->data = NULL;
-
-				free(postPipeNode);
-				postPipeNode = NULL;
+			/****************
+             * HANDLE EXE COMMANDS
+             ****************/
+			//special case: history
+			if (strcmp(*postPipe, "history") == 0) {
+				printList(historyList, printHistoryType, (historyList->size - histcount));
 			}
 
 			//close the write end of the parent's pipe
@@ -243,50 +225,34 @@ void pipeIt(char * s, LinkedList * aliasList){
 			//alias the read end of the pipe to stdin
 			close(0);
 			dup(fd[0]);
-		
+
 			close(fd[0]);
+
+			//execute command
 			int result = execvp(postPipe[0], postPipe);
-			
+
 			//deal with bad result from exec
 			if (result == -1) {
 				exit(-1);
 			}
-	
+
 		}// end if AKA parent
 		else
 		{
-			//split off prepipe
-			prePipe = parsePrePipe(s, &preCount);
-			argv = prePipe;
-
-			//check if prePipe is an alias and update if necessary
-			if (preCount == 1) {
-				checkAliasArgs = (alias *)buildAliasType_Args(argv);
-				Node * prePipeNode = buildNode_Type(checkAliasArgs);
-
-				int foundAlias = 0;
-				foundAlias = findInList(aliasList, prePipeNode, compareAlias);
-
-				if (foundAlias == 1) {
-					checkAliasArgs = (alias *) prePipeNode->data;
-
-					//clean our makeargs
-					//clean(argc, argv);
-
-					//and replace with new
-					argc = makeargs(checkAliasArgs->argv[1], &argv);
-				}
-				free(prePipeNode->data);
-				prePipeNode->data = NULL;
-
-				free(prePipeNode);
-				prePipeNode = NULL;
+			/****************
+             * HANDLE EXE COMMANDS
+             ****************/
+			//special case: history
+			if (strcmp(*prePipe, "history") == 0) {
+				printList(historyList, printHistoryType, (historyList->size - histcount));
 			}
 
 			close(fd[0]);
 			close(1);
 			dup(fd[1]);
 			close(fd[1]);
+
+			//normal execution
 			int result = execvp(prePipe[0], prePipe);
 
 			//deal with bad result from exec
@@ -295,7 +261,4 @@ void pipeIt(char * s, LinkedList * aliasList){
 			}
 		}// end else AKA child
 	}
-
-	clean(preCount, prePipe);
-	clean(postCount, postPipe);
 }
