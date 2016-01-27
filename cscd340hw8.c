@@ -277,16 +277,18 @@ int main()
 
 		if (pipes > 0) {
 			//split into left and right strings
-			char * leftPipeString, * rightPipeString;
-			splitForPipe(s, &leftPipeString, &rightPipeString);
+			char * leftPipeString = NULL;
+			char * rightPipeString = NULL;
+			char * leftCommand, * rightCommand;
+			splitForPipe(s, &leftCommand, &rightCommand);
 
 			/****************
 			 * PREFORK/PREARG SPECIAL CASES
 			 ****************/
 
 			//special case: redirection
-			checkForRedirection(leftPipeString, &leftPipeString, &inRedirect, &outRedirect);
-			checkForRedirection(rightPipeString, &rightPipeString, &inRedirect, &outRedirect);
+			checkForRedirection(leftCommand, &leftPipeString, &inRedirect, &outRedirect);
+			checkForRedirection(rightCommand, &rightPipeString, &inRedirect, &outRedirect);
 
 			//special case: is an alias
 			checkForAlias(&leftPipeString, aliasList);
@@ -376,6 +378,12 @@ int main()
 			leftPipeString = NULL;
 			free(rightPipeString);
 			rightPipeString = NULL;
+
+			free(leftCommand);
+			leftCommand = NULL;
+			free(rightCommand);
+			rightCommand = NULL;
+
 			clean(leftCount, leftPipe);
 			clean(rightCount, rightPipe);
 

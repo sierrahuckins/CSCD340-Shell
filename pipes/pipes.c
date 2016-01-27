@@ -87,7 +87,6 @@ void splitForPipe(char * s, char ** leftPipe, char ** rightPipe) {
 		free(newStr);
 		newStr = NULL;
 	}
-
 }
 
 char ** parsePrePipe(char *s, int * preCount) {
@@ -211,13 +210,6 @@ void pipeIt(char ** prePipe, char ** postPipe, char ** inRedirect, char ** outRe
 
 		if(pid != 0)
 		{
-			/****************
-             * HANDLE EXE COMMANDS
-             ****************/
-			//special case: history
-			if (strcmp(*postPipe, "history") == 0) {
-				printList(historyList, printHistoryType, (historyList->size - histcount));
-			}
 
 			//close the write end of the parent's pipe
 			close(fd[1]);
@@ -227,6 +219,14 @@ void pipeIt(char ** prePipe, char ** postPipe, char ** inRedirect, char ** outRe
 			dup(fd[0]);
 
 			close(fd[0]);
+
+			/****************
+             * HANDLE EXE COMMANDS
+             ****************/
+			//special case: history
+			if (strcmp(*postPipe, "history") == 0) {
+				printList(historyList, printHistoryType, (historyList->size - histcount));
+			}
 
 			//execute command
 			int result = execvp(postPipe[0], postPipe);
@@ -239,6 +239,11 @@ void pipeIt(char ** prePipe, char ** postPipe, char ** inRedirect, char ** outRe
 		}// end if AKA parent
 		else
 		{
+			close(fd[0]);
+			close(1);
+			dup(fd[1]);
+			close(fd[1]);
+
 			/****************
              * HANDLE EXE COMMANDS
              ****************/
@@ -246,11 +251,6 @@ void pipeIt(char ** prePipe, char ** postPipe, char ** inRedirect, char ** outRe
 			if (strcmp(*prePipe, "history") == 0) {
 				printList(historyList, printHistoryType, (historyList->size - histcount));
 			}
-
-			close(fd[0]);
-			close(1);
-			dup(fd[1]);
-			close(fd[1]);
 
 			//normal execution
 			int result = execvp(prePipe[0], prePipe);
