@@ -36,18 +36,25 @@ int main()
 	char * startingDir;
 	char tempPath[PATH_MAX];
 
-	//check if .msshrc exists and setup variables if it does
+	/****************
+	 * HANDLE .MSSHRC
+	 ****************/
 	fp = fopen(".msshrc", "r");
 	startingDir=getcwd(tempPath, PATH_MAX);
 
 	if (fp != NULL) {
+		/****************
+		 * GET HIST VARIABLES
+		 ****************/
 		//get histcount from file
 		histcount = getHistFileCount(fp, s);
 
 		//get histfilecount from file
 		histfilecount = getHistFileCount(fp, s);
 
-		//get aliases
+		/****************
+		 * GET ALIASES
+		 ****************/
 		fgets(s, MAX, fp);
 
 		//if the line that was just grabbed was empty, move forward a line
@@ -102,6 +109,7 @@ int main()
 				}
 
 				setenv("PATH", path, 1);
+
 				//clean up the makealiasargs call
 				cleanTypeAlias(buildAliasType_Args(argv));
 			}
@@ -204,7 +212,7 @@ int main()
 			char *outRedirect = NULL;
 
 			/****************
-			 * PREFORK SPECIAL CASE CODE
+			 * PREFORK/PREARG SPECIAL CASES
 			 ****************/
 			//special case: redirection
 			checkForRedirection(s, &command, &inRedirect, &outRedirect);
@@ -214,38 +222,88 @@ int main()
 				checkExclamations(&command, historyList);
 			}
 
-			//special case: aliases
+			//special case: is an alias
 			checkForAlias(&command, aliasList);
+
+			//special case: create alias
+			if (strstr(command, "alias ") == command) {
+				//make new alias style args
+				argc = makealiasargs(s, &argv);
+
+				//add to alias list
+				addLast(aliasList, buildNode_Type(buildAliasType_Args(argv)));
+
+				printList(aliasList, printAliasType, 0);
+
+				argv = NULL;
+
+			}
+
+			//special case: unalias
+			if (strstr(command, "unalias ") == command) {
+				printf("Unaliasing not currently supported.");
+
+				/*//make new alias style args
+				argc = makeargs(s, &argv);
+				char temp[MAX];
+				strcpy(temp, argv[1]);
+
+				clean(argc, argv);
+				argv = NULL;
+
+				argc = 2;
+				argv = (char **)calloc(3, sizeof(char *));
+				argv[0] = (char *) calloc(strlen(temp) + 1, sizeof(char));
+				strcpy(argv[0], temp);
+				argv[1] = (char *) calloc(strlen("TEST") + 1, sizeof(char));
+				strcpy(argv[0], "TEST\0");
+				argv[3] = '\0';
+
+				Node * removeNode = buildNode_Type(buildAliasType_Args(argv));
+
+				removeItem(aliasList, removeNode, cleanTypeAlias, compareAlias);
+				printList(aliasList, printAliasType, 0);
+
+				//clean up the makeargs call
+				argv = NULL;*/
+			}
 
 			/****************
 			 * MAKEARGS FOR EXECUTION
 			 ****************/
+
 			argc = makeargs(command, &argv);
 
 			/****************
 			 * FORK A CHILD FOR EXECUTION
 			 ****************/
+
 			pid_t pid;
 			int res, status;
 			pid = fork();
 
 			//parent will wait so it can return to original program
 			if (pid == 0) {
+
 				/****************
 				 * SETUP REDIRECTION
 				 ****************/
+
 				if (inRedirect != NULL)
 					redirectIn(inRedirect);
 				if (outRedirect != NULL)
 					redirectOut(outRedirect);
 
 				/****************
-				 * HANDLE COMMANDS WITH NEW PROGRAMS
+				 * HANDLE EXE COMMANDS
 				 ****************/
-
+				//special case: history
+				if (strcmp(argv[0], "history") == 0) {
+					printList(historyList, printHistoryType, (historyList->size - histcount));
+				}
+				
 				//normal execution
 				res = execvp(argv[0], argv);
-
 
 				//deal with bad result from exec
 				if (res == -1) {
@@ -261,71 +319,11 @@ int main()
 				 * HANDLE INTERNAL COMMANDS
 				 ****************/
 
-				//special case: alias
-				if (strcmp(argv[0], "alias") == 0) {
-					//make new alias style args
-					argc = makealiasargs(s, &argv);
-
-					//add to alias list
-					addLast(aliasList, buildNode_Type(buildAliasType_Args(argv)));
-
-					printList(aliasList, printAliasType, 0);
-				}
-				//special case: unalias
-				if (strcmp(argv[0], "unalias") == 0) {
-					checkForAliasToRemove(argv[1], aliasList);
-					printList(aliasList, printAliasType, 0);
-				}
 				//special case:cd
 				if (strcmp(argv[0], "cd") == 0) {
 					chdir(argv[1]);
-
 				}
-				//special case: history
-				if (strcmp(argv[0], "history") == 0) {
-					printList(historyList, printHistoryType, (historyList->size - histcount));
-				}
-				//special case: setting path
-				else if (strstr(argv[0], "PATH") == argv[0]) {
-					//free old path
-					free(path);
-					path = NULL;
 
-					//save pointer for strtok_r
-					char * save;
-
-					//clear front of command (path=) away
-					char * truncatedStrTok = strtok_r(argv[0], "=", &save);
-
-					truncatedStrTok = strtok_r(NULL, ":", &save);
-
-					char newPath[PATH_MAX];
-					strcpy(newPath, "");
-
-					int x = 0;
-					while (truncatedStrTok != NULL) {
-						if (x != 0) {
-							strcat(newPath, ":");
-							x++;
-						}
-						strip(save);
-
-						if (strcmp(truncatedStrTok, "$PATH") == 0) {
-							char *envPath = getenv("PATH");
-							strcat(newPath, envPath);
-						}
-						else {
-							strcat(newPath, truncatedStrTok);
-						}
-
-
-						truncatedStrTok = strtok_r(NULL, ":", &save);
-					}
-
-					path = (char *)calloc(strlen(newPath) + 1, sizeof(char));
-					strcpy(path, newPath);
-					setenv("PATH", path, 1);
-				}
 			}
 
 			//free my command string

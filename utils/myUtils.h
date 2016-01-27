@@ -12,7 +12,7 @@
 void strip(char *array);
 void checkForAlias(char ** command, LinkedList * aliasList);
 void checkForRedirection(char * s, char ** command, char ** redirectInPath, char ** redirectOutPath);
-void checkForAliasToRemove(char * s, LinkedList * aliasList);
+void checkForAliasToRemove(char ** argv, LinkedList * aliasList);
 void checkExclamations (char ** command, LinkedList * historyList);
 
 #endif

@@ -1,4 +1,5 @@
 #include "myUtils.h"
+#include "../linkedlist/listUtils.h"
 
 void strip(char *array) {
     if (array == NULL) {
@@ -103,19 +104,8 @@ void checkForAlias(char ** command, LinkedList * aliasList) {
 
 }
 
-void checkForAliasToRemove(char * s, LinkedList * aliasList) {
-    Node * curr = aliasList->head->next;
+void checkForAliasToRemove(char ** argv, LinkedList * aliasList) {
 
-    while (curr != NULL) {
-        alias * currAlias = curr->data;
-
-        if (strcmp(s, currAlias->argv[0]) == 0) {
-            removeItem(aliasList, curr, cleanTypeAlias, compareAlias);
-            break;
-        }
-
-        curr = curr->next;
-    }
 
 }
 
