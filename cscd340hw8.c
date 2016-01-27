@@ -115,14 +115,14 @@ int main()
 			}
 		}
 
+		fclose(fp);
+
 	}
 	else {
 		//printf("Error opening file: %s.\n", strerror(errno));
 		histcount = 100;
 		histfilecount = 1000;
 	}
-
-	fclose(fp);
 
 	printList(aliasList, printAliasType, 0);
 
@@ -301,7 +301,7 @@ int main()
 				if (strcmp(argv[0], "history") == 0) {
 					printList(historyList, printHistoryType, (historyList->size - histcount));
 				}
-				
+
 				//normal execution
 				res = execvp(argv[0], argv);
 
