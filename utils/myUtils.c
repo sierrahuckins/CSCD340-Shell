@@ -44,6 +44,44 @@ char *strstrip(char *s)
     return s;
 }
 
+void checkExclamations (char ** command, LinkedList * historyList) {
+    //get last history
+    Node *lastHistory;
+
+    if (*(*command + 1) == '!') {
+        lastHistory = retrieveNthLast(historyList, 1);
+    }
+    else {
+        int val = 1;
+        char * p = *command;
+        while(*p) {
+            if (isdigit(*p))
+                val = (int)strtol(p, &p, 10);
+            else
+                p++;
+        }
+
+        lastHistory = retrieveNth(historyList, val);
+    }
+
+    history *lastCommand = lastHistory->data;
+
+    char tempCommand[MAX];
+
+    strcpy(tempCommand, lastCommand->argv[0]);
+
+    int x;
+    for (x = 1; x < lastCommand->argc; x++) {
+        strcat(tempCommand, " ");
+        strcat(tempCommand, lastCommand->argv[x]);
+    }
+
+    free(*command);
+    *command = NULL;
+
+    *command = (char *)calloc(strlen(tempCommand) + 1, sizeof(char));
+    strcpy(*command, tempCommand);
+}
 
 void checkForAlias(char ** command, LinkedList * aliasList) {
     Node * curr = aliasList->head->next;

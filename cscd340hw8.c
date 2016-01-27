@@ -33,9 +33,12 @@ int main()
 	FILE * fp = NULL;
 	FILE * tempFile = NULL;
 	alias * checkAliasArgs = NULL;
+	char * startingDir;
+	char tempPath[PATH_MAX];
 
 	//check if .msshrc exists and setup variables if it does
 	fp = fopen(".msshrc", "r");
+	startingDir=getcwd(tempPath, PATH_MAX);
 
 	if (fp != NULL) {
 		//get histcount from file
@@ -111,6 +114,8 @@ int main()
 		histfilecount = 1000;
 	}
 
+	fclose(fp);
+
 	printList(aliasList, printAliasType, 0);
 
 	strcpy(s, "");
@@ -118,7 +123,7 @@ int main()
 	/****************
 	 * SETUP HISTORY
 	 ****************/
-	fp = fopen(".mssh_history", "r");
+	fp = fopen(".mssh_history", "rw");
 
 	if (fp != NULL) {
 		//find out how many lines are in history
@@ -153,7 +158,7 @@ int main()
 		 ****************/
 		argc = makehistoryargs(s, &argv);
 		history * currentArgs = (history *)buildHistoryType_Args(argc, argv);
-		Node * lastHistory= retrieveLast(historyList);
+		Node * lastHistory= retrieveNthLast(historyList, 0);
 
 		//either add to history or clean up the args we've made if it already matches last history entry
 		if(historyList->size == 0 || compareHistory(currentArgs, lastHistory->data) != 0) {
@@ -198,13 +203,23 @@ int main()
 			char *inRedirect = NULL;
 			char *outRedirect = NULL;
 
-			//check for redirections
+			/****************
+			 * PREFORK SPECIAL CASE CODE
+			 ****************/
+			//special case: redirection
 			checkForRedirection(s, &command, &inRedirect, &outRedirect);
 
-			//check for alias
+			//special case: exclamation points
+			if (*(command) == '!') {
+				checkExclamations(&command, historyList);
+			}
+
+			//special case: aliases
 			checkForAlias(&command, aliasList);
 
-			//makeargs for command
+			/****************
+			 * MAKEARGS FOR EXECUTION
+			 ****************/
 			argc = makeargs(command, &argv);
 
 			/****************
@@ -227,23 +242,10 @@ int main()
 				/****************
 				 * HANDLE COMMANDS WITH NEW PROGRAMS
 				 ****************/
-				//special case: exclamation points
-				if (*(argv[0]) == '!') {
-					if (*(argv[0] + 1) == '!') {
-						//get last history
-						Node *lastHistory = retrieveLast(historyList);
-						history *lastCommand = lastHistory->data;
 
-						res = execvp(lastCommand->argv[0], lastCommand->argv);
-					}
-					else {
-						//still need to figure this one out!!
-					}
-				}
 				//normal execution
-				else {
-					res = execvp(argv[0], argv);
-				}
+				res = execvp(argv[0], argv);
+
 
 				//deal with bad result from exec
 				if (res == -1) {
@@ -352,7 +354,21 @@ int main()
   	}// end while
 
 	//write out to .msshrc_history
+	char * historyPath = (char *)calloc(strlen(startingDir) + strlen("/.mssh_history") + 1, sizeof(char));
+	strcpy(historyPath, startingDir);
+	strcat(historyPath, "/.mssh_history");
+
+	fp = fopen(historyPath, "w");
+
+	free(historyPath);
+	historyPath = NULL;
+
 	if (fp != NULL) {
+		//clear contents of file
+		ftruncate(fileno(fp), 0);
+
+		rewind(fp);
+
 		int skip = historyList->size - histfilecount;
 		if (skip < 0)
 			skip = 0;
@@ -384,10 +400,8 @@ int main()
 		printf("There was an error opening .msshrc_history. No history written.");
 	}
 
-	if (pathSet == TRUE) {
-		free(path);
-		path = NULL;
-	}
+	free(path);
+	path = NULL;
 
 	clearList(historyList, cleanTypeHistory);
    	free(historyList);

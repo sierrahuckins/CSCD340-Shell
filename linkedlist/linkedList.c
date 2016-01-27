@@ -124,7 +124,7 @@ void * retrieveFirst(LinkedList * theList) {
 	}
 }
 
-void * retrieveLast(LinkedList * theList) {
+void * retrieveNthLast(LinkedList * theList, int num) {
 	//check if passed in list is null
 	if (theList == NULL)
 		exit(-99);
@@ -134,7 +134,27 @@ void * retrieveLast(LinkedList * theList) {
 		//create curr pointer and move it to end of list
 		Node * curr = theList->head;
 
-		while (curr->next != NULL) {
+		int x;
+		for (x = 0; x < theList->size - num; x++) {
+			curr = curr->next;
+		}
+
+		return curr;
+	}
+}
+
+void * retrieveNth(LinkedList * theList, int num) {
+	//check if passed in list is null
+	if (theList == NULL)
+		exit(-99);
+
+		//passed preconditions, continue with function
+	else {
+		//create curr pointer and move it to end of list
+		Node * curr = theList->head;
+
+		int x;
+		for (x = 0; x < num; x++) {
 			curr = curr->next;
 		}
 

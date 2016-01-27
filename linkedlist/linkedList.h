@@ -98,7 +98,9 @@ void * retrieveFirst(LinkedList * theList);
 
 void removeFirst(LinkedList * theList, void (*removeData)(void *));
 
-void * retrieveLast(LinkedList * theList);
+void * retrieveNthLast(LinkedList * theList, int num);
+
+void * retrieveNth(LinkedList * theList, int num);
 
 int findInList(LinkedList * theList, void * toFind, int (*compare)(const void *, const void *));
 
